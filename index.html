@@ -949,6 +949,107 @@
                 width: 100%;
             }
         }
+        /* ============== v2: Away / Meal Buttons ============== */
+        .btn-away, .btn-meal {
+            background: #444;
+            color: #fff;
+            border: none;
+            padding: 25px 50px;
+            font-size: 40px;
+            font-weight: bold;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-away:hover, .btn-meal:hover { background: #666; }
+
+        /* ============== v2: Normal Section ============== */
+        #normal-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* ============== v2: Recovery Mode ============== */
+        #recovery-section {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        #recovery-resume-area { width: 100%; }
+        #recovery-tasks-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            width: 100%;
+        }
+        .btn-resume-main {
+            background: #d32f2f;
+            color: #fff;
+            border: none;
+            padding: 40px 60px;
+            font-size: 56px;
+            font-weight: bold;
+            border-radius: 24px;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 12px 0 #9a0007;
+            transition: 0.1s;
+            letter-spacing: 2px;
+        }
+        .btn-resume-main:active {
+            transform: translateY(12px);
+            box-shadow: 0 0 0 #9a0007;
+        }
+        .btn-task-recovery {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 20px 30px;
+            font-size: 30px;
+            font-weight: bold;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            flex: 1;
+            min-width: 180px;
+        }
+        .btn-task-recovery:hover { background: #555; }
+        .btn-roulette-recovery {
+            background: #444;
+            color: #fff;
+            border: 2px solid #666;
+            padding: 20px 60px;
+            font-size: 34px;
+            font-weight: bold;
+            border-radius: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .btn-roulette-recovery:hover { background: #555; }
+        .btn-finish-recovery {
+            background: transparent;
+            color: #555;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 8px 15px;
+        }
+        .btn-finish-recovery:hover { color: #888; }
+        @media (max-width: 768px) {
+            .btn-resume-main { font-size: 36px; padding: 25px 30px; }
+            .btn-task-recovery { font-size: 22px; padding: 15px 20px; }
+            .btn-roulette-recovery { font-size: 24px; padding: 15px; }
+            .btn-away, .btn-meal { padding: 18px 30px; font-size: 24px; }
+        }
     </style>
 </head>
 
@@ -970,14 +1071,23 @@
 
     <!-- ================= Main Screen ================= -->
     <div id="main-screen" class="screen active">
-        <div class="grid-container" id="task-slots"></div>
-        <div class="controls-row">
-            <button class="btn-add-task" id="btn-add-task" onclick="addTask()">＋ タスクを追加 (最大6個)</button>
-            <button class="btn-summary" id="btn-show-summary" onclick="showSummary()">📊 今日の成果</button>
-            <button class="btn-secondary" id="btn-show-settings" onclick="showSettings()">⚙️ 設定</button>
-            <button class="btn-secondary" id="btn-export-main" onclick="exportLogsAsJSON()">📥 エクスポート</button>
+        <!-- 通常モード -->
+        <div id="normal-section">
+            <div class="grid-container" id="task-slots"></div>
+            <div class="controls-row">
+                <button class="btn-add-task" id="btn-add-task" onclick="addTask()">＋ タスクを追加 (最大6個)</button>
+                <button class="btn-summary" id="btn-show-summary" onclick="showSummary()">📊 今日の成果</button>
+                <button class="btn-secondary" id="btn-show-settings" onclick="showSettings()">⚙️ 設定</button>
+            </div>
+            <button class="btn-roulette" id="btn-roulette">決められない時（開始）</button>
         </div>
-        <button class="btn-roulette" id="btn-roulette">決められない時（開始）</button>
+        <!-- 復帰モード -->
+        <div id="recovery-section" style="display:none">
+            <div id="recovery-resume-area"></div>
+            <div id="recovery-tasks-area"></div>
+            <button class="btn-roulette-recovery" id="recovery-roulette-btn">ランダム</button>
+            <button class="btn-finish-recovery" onclick="exitRecovery()">終了</button>
+        </div>
     </div>
 
     <!-- ================= Focus Screen ================= -->
@@ -985,21 +1095,13 @@
         <div id="focus-task-display">タスク名</div>
         <div id="focus-timer-display">00:00</div>
         <div class="focus-buttons">
-            <button class="btn-pause" id="btn-pause" onclick="pauseFocus()">⏸ 一時中断</button>
+            <button class="btn-away" id="btn-away" onclick="pauseAs('away')">離席</button>
+            <button class="btn-meal" id="btn-meal" onclick="pauseAs('meal')">食事</button>
             <button class="btn-finish" id="btn-finish-focus" onclick="finishFocus()">■ 終了</button>
         </div>
     </div>
 
-    <!-- ================= Pause Screen ================= -->
-    <div id="pause-screen" class="screen">
-        <h1 id="pause-title">一時中断中</h1>
-        <div id="pause-timer-display">00:00</div>
-        <div class="pause-buttons">
-            <button class="btn-resume" id="btn-resume" onclick="resumeFocus()">▶ 再開</button>
-            <button class="btn-pause-finish" id="btn-finish-pause" onclick="finishFromPause()">■ 終了</button>
-        </div>
-        <button class="btn-return-main" id="btn-return-main" onclick="returnToTaskSelection()">← タスク選択へ戻る</button>
-    </div>
+    <!-- ================= Pause Screen (v2廃止) ================= -->
 
     <!-- ================= Summary Modal ================= -->
     <div id="summary-modal">
@@ -1008,10 +1110,7 @@
         <div class="summary-actions">
             <button class="btn-close-summary" id="btn-close-summary" onclick="closeSummary()">閉じる</button>
         </div>
-        <div class="summary-actions" style="margin-top: 15px;">
-            <button class="btn-export" id="btn-export-json" onclick="exportLogsAsJSON()">📥 JSON</button>
-            <button class="btn-export" id="btn-export-csv" onclick="exportLogsAsCSV()">📥 CSV</button>
-        </div>
+
         <button class="btn-reset-log" id="btn-reset-log" onclick="resetLog()">ログをリセット</button>
     </div>
 
@@ -1034,17 +1133,21 @@
                 </label>
             </div>
         </div>
-        <button class="btn-save-settings" id="btn-save-settings" onclick="saveSettings()">保存</button>
+        <button class="btn-save-settings" id="btn-save-settings" onclick="saveSettings()">保存して閉じる</button>
+        <div style="display:flex;gap:15px;margin-top:20px;justify-content:center;">
+            <button class="btn-export" id="btn-export-json" onclick="exportLogsAsJSON()">📥 JSON エクスポート</button>
+            <button class="btn-export" id="btn-export-csv" onclick="exportLogsAsCSV()">📥 CSV エクスポート</button>
+        </div>
     </div>
 
     <!-- ================= Logic ================= -->
     <script>
         // ================= Constants =================
         const STORAGE_KEYS = {
-            tasks: 'adhd_focus_tasks',
-            logs: 'adhd_focus_logs',
-            settings: 'adhd_focus_settings',
-            activeState: 'adhd_focus_active_state'
+            tasks: 'tasks_v2',
+            logs: 'logs_v2',
+            settings: 'settings_v2',
+            activeState: 'activeState_v2'
         };
         const MAX_TASKS = 6;
         const MILESTONE_INTERVAL = 15 * 60; // 15分（秒）
@@ -1052,11 +1155,15 @@
         // ================= State =================
         let tasks = [''];
         let currentTaskName = '';
-        let focusSegmentStartedAt = null; // 集中区間の開始時刻（ms）
-        let pauseStartedAt = null;        // 一時中断の開始時刻（ms）
+        let focusSegmentStartedAt = null;
         let focusIntervalId = null;
-        let pauseIntervalId = null;
-        let lastNotifiedMilestone = 0;    // 最後に通知した節目（秒）
+        let lastNotifiedMilestone = 0;
+
+        // 復帰モード状態
+        let isRecoveryMode = false;
+        let lastTaskName = '';
+        let lastPauseType = ''; // 'away' | 'meal'
+        let pausedAt = null;
 
         // 設定
         let settings = {
@@ -1107,14 +1214,13 @@
         function initApp() {
             loadSettings();
             loadTasks();
-            renderTaskSlots();
+            renderMainScreen();
 
             document.getElementById('btn-roulette').addEventListener('click', () => {
                 initAudio();
                 startRoulette();
             });
 
-            // ページ復帰時の状態復元チェック
             checkActiveState();
         }
 
@@ -1221,12 +1327,11 @@
                 alert('少なくとも1つタスクを入力してください！');
                 return;
             }
-
-            let counter = 0;
-            const rouletteBtn = document.getElementById('btn-roulette');
+            const btnId = isRecoveryMode ? 'recovery-roulette-btn' : 'btn-roulette';
+            const rouletteBtn = document.getElementById(btnId);
             const originalText = rouletteBtn.innerText;
             rouletteBtn.disabled = true;
-
+            let counter = 0;
             const rInterval = setInterval(() => {
                 rouletteBtn.innerText = validTasks[Math.floor(Math.random() * validTasks.length)];
                 counter++;
@@ -1248,6 +1353,9 @@
 
         // ================= Focus Timer =================
         function startFocus(taskName) {
+            const wasRecovery = isRecoveryMode;
+            isRecoveryMode = false; // 復帰モード解除
+
             currentTaskName = taskName;
             focusSegmentStartedAt = Date.now();
             lastNotifiedMilestone = 0;
@@ -1255,110 +1363,109 @@
             document.getElementById('focus-task-display').innerText = currentTaskName;
             document.getElementById('focus-timer-display').innerText = '00:00';
             switchScreen('focus-screen');
+
+            if (wasRecovery) {
+                // 再開フラッシュ（復帰报酬演出）
+                flashScreen();
+            }
             playBeep('start');
 
             saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
-
             clearAllIntervals();
             focusIntervalId = setInterval(tickFocusTimer, 1000);
         }
 
         function tickFocusTimer() {
             const now = Date.now();
-
-            // 4:00 AM 境界チェック：集中中に日付をまたいだ場合、自動分割する
             const next4AM = getNext4AM(focusSegmentStartedAt);
             if (now >= next4AM) {
-                // 4:00 までの区間を前日キーとして保存
                 const splitSeconds = Math.round((next4AM - focusSegmentStartedAt) / 1000);
                 saveFocusSegment(currentTaskName, focusSegmentStartedAt, next4AM, splitSeconds);
-
-                // 4:00 から新しい日の区間として再スタート
                 focusSegmentStartedAt = next4AM;
                 lastNotifiedMilestone = 0;
-
-                // activeState を更新
                 saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
-
-                // ユーザーへ通知
                 showMilestoneMessage('日付が変わりました');
             }
-
             const elapsed = Math.floor((now - focusSegmentStartedAt) / 1000);
             document.getElementById('focus-timer-display').innerText = formatElapsedTime(elapsed);
-
-            if (settings.milestoneEnabled) {
-                handleFocusMilestone(elapsed);
-            }
+            if (settings.milestoneEnabled) { handleFocusMilestone(elapsed); }
         }
 
-        function pauseFocus() {
-            // 集中区間を記録
+        // ================= pauseAs (v2: 離席 / 食事) =================
+        function pauseAs(type) {
             const endedAt = Date.now();
             const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
             saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
-
             clearAllIntervals();
 
-            // 一時中断画面へ
-            pauseStartedAt = Date.now();
-            document.getElementById('pause-timer-display').innerText = '00:00';
-            switchScreen('pause-screen');
+            isRecoveryMode = true;
+            lastTaskName = currentTaskName;
+            lastPauseType = type;
+            pausedAt = Date.now();
 
-            saveActiveState({ status: 'pause', taskName: currentTaskName, pauseStartedAt: pauseStartedAt });
-
-            pauseIntervalId = setInterval(tickPauseTimer, 1000);
-        }
-
-        function resumeFocus() {
-            clearAllIntervals();
-
-            // 新しい集中区間として再開
-            focusSegmentStartedAt = Date.now();
-            lastNotifiedMilestone = 0;
-
-            document.getElementById('focus-task-display').innerText = currentTaskName;
-            document.getElementById('focus-timer-display').innerText = '00:00';
-            switchScreen('focus-screen');
-            playBeep('start');
-
-            saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
-
-            focusIntervalId = setInterval(tickFocusTimer, 1000);
-        }
-
-        function finishFocus() {
-            // 集中区間を記録
-            const endedAt = Date.now();
-            const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
-            saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
-
-            clearAllIntervals();
-            clearActiveState();
-
-            // 集計画面へ
-            showSummary();
-        }
-
-        function finishFromPause() {
-            // 一時中断中からの終了：新たな集中区間は発生していない
-            clearAllIntervals();
-            clearActiveState();
-            showSummary();
-        }
-
-        function returnToTaskSelection() {
-            // 一時中断画面からメイン画面へ
-            clearAllIntervals();
-            clearActiveState();
+            saveActiveState({ status: 'recovery', taskName: currentTaskName, pauseType: type, pausedAt: pausedAt });
+            renderMainScreen();
             switchScreen('main-screen');
         }
 
-        // ================= Pause Timer =================
-        function tickPauseTimer() {
-            const elapsed = Math.floor((Date.now() - pauseStartedAt) / 1000);
-            document.getElementById('pause-timer-display').innerText = formatElapsedTime(elapsed);
-            // 一時中断タイマーには通知なし
+        function finishFocus() {
+            const endedAt = Date.now();
+            const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
+            saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
+            clearAllIntervals();
+            clearActiveState();
+            showSummary();
+        }
+
+        // ================= Recovery Mode =================
+        function renderMainScreen() {
+            const normalSection = document.getElementById('normal-section');
+            const recoverySection = document.getElementById('recovery-section');
+            if (isRecoveryMode) {
+                normalSection.style.display = 'none';
+                recoverySection.style.display = 'flex';
+                renderRecoverySection();
+            } else {
+                normalSection.style.display = '';
+                recoverySection.style.display = 'none';
+                renderTaskSlots();
+            }
+        }
+
+        function renderRecoverySection() {
+            // 元タスク再開ボタン（大）
+            const resumeArea = document.getElementById('recovery-resume-area');
+            resumeArea.innerHTML = '';
+            const resumeBtn = document.createElement('button');
+            resumeBtn.className = 'btn-resume-main';
+            resumeBtn.id = 'btn-resume-last';
+            resumeBtn.innerText = lastTaskName + ' を再開';
+            resumeBtn.addEventListener('click', () => { initAudio(); startFocus(lastTaskName); });
+            resumeArea.appendChild(resumeBtn);
+
+            // 他タスクボタン（中、固定順）
+            const tasksArea = document.getElementById('recovery-tasks-area');
+            tasksArea.innerHTML = '';
+            tasks.map(t => t.trim()).filter(t => t !== '').forEach(name => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-task-recovery';
+                btn.innerText = name;
+                btn.addEventListener('click', () => { initAudio(); startFocus(name); });
+                tasksArea.appendChild(btn);
+            });
+
+            // ランダムボタン
+            const rouletteBtn = document.getElementById('recovery-roulette-btn');
+            rouletteBtn.onclick = () => { initAudio(); startRoulette(); };
+        }
+
+        function exitRecovery() {
+            isRecoveryMode = false;
+            lastTaskName = '';
+            lastPauseType = '';
+            pausedAt = null;
+            clearActiveState();
+            renderMainScreen();
         }
 
         // ================= Milestone Notifications =================
@@ -1488,22 +1595,27 @@
         }
 
         function getTaskRanking(todayLogs) {
-            const totals = {};
-            for (const log of todayLogs) {
-                if (!totals[log.taskName]) {
-                    totals[log.taskName] = 0;
-                }
-                totals[log.taskName] += log.seconds;
-            }
-            return Object.entries(totals)
-                .sort((a, b) => b[1] - a[1])
-                .map(([task, seconds]) => ({ task, seconds }));
+            // v2: ランキングは集計画面から削除
         }
 
         function getBestSession(todayLogs) {
             if (todayLogs.length === 0) return null;
             const best = todayLogs.reduce((a, b) => a.seconds > b.seconds ? a : b);
             return { task: best.taskName, seconds: best.seconds };
+        }
+
+        function getFirstStartTime(todayLogs) {
+            if (todayLogs.length === 0) return '—';
+            const earliest = Math.min(...todayLogs.map(log => log.startedAt));
+            const d = new Date(earliest);
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+
+        function didStartInMorning(todayLogs) {
+            if (todayLogs.length === 0) return false;
+            const earliest = Math.min(...todayLogs.map(log => log.startedAt));
+            const h = new Date(earliest).getHours();
+            return h >= 4 && h < 12; // 4:00～11:59
         }
 
         // ================= Summary Rendering =================
@@ -1517,8 +1629,9 @@
                 const totalSeconds = getTotalFocusTime(todayLogs);
                 const longestSeconds = getLongestFocusSegment(todayLogs);
                 const startCount = getStartCount(todayLogs);
-                const ranking = getTaskRanking(todayLogs);
                 const bestSession = getBestSession(todayLogs);
+                const firstStartTime = getFirstStartTime(todayLogs);
+                const inMorning = didStartInMorning(todayLogs);
 
                 let html = '';
 
@@ -1531,6 +1644,14 @@
                 // 統計カード
                 html += '<div class="summary-stats">';
                 html += '<div class="summary-stat-card">';
+                html += '<div class="summary-stat-label">最初の着手</div>';
+                html += '<div class="summary-stat-value">' + firstStartTime + '</div>';
+                html += '</div>';
+                html += '<div class="summary-stat-card">';
+                html += '<div class="summary-stat-label">午前中に着手</div>';
+                html += '<div class="summary-stat-value" style="color:' + (inMorning ? '#4fc3f7' : '#666') + '">' + (inMorning ? '✓ できた' : '—') + '</div>';
+                html += '</div>';
+                html += '<div class="summary-stat-card">';
                 html += '<div class="summary-stat-label">最長連続</div>';
                 html += '<div class="summary-stat-value">' + formatDuration(longestSeconds) + '</div>';
                 html += '</div>';
@@ -1540,7 +1661,7 @@
                 html += '</div>';
                 html += '</div>';
 
-                // ベストセッション
+                // ベストセッション（自己記録）
                 if (bestSession) {
                     html += '<div class="summary-section">';
                     html += '<div class="summary-section-title">今日のベストセッション</div>';
@@ -1548,20 +1669,6 @@
                     html += '<span class="task-name">' + escapeHtml(bestSession.task) + '</span> ';
                     html += formatDuration(bestSession.seconds);
                     html += '</div>';
-                    html += '</div>';
-                }
-
-                // タスク別ランキング
-                if (ranking.length > 0) {
-                    html += '<div class="summary-section">';
-                    html += '<div class="summary-section-title">タスク別ランキング</div>';
-                    for (let i = 0; i < ranking.length; i++) {
-                        html += '<div class="ranking-row">';
-                        html += '<span class="ranking-position">' + (i + 1) + '.</span>';
-                        html += '<span class="ranking-task">' + escapeHtml(ranking[i].task) + '</span>';
-                        html += '<span class="ranking-time">' + formatDuration(ranking[i].seconds) + '</span>';
-                        html += '</div>';
-                    }
                     html += '</div>';
                 }
 
@@ -1573,6 +1680,8 @@
 
         function closeSummary() {
             document.getElementById('summary-modal').classList.remove('active');
+            isRecoveryMode = false; // 集計画面から屋ける時は常に通常模式へ
+            renderMainScreen();
             switchScreen('main-screen');
         }
 
@@ -1674,70 +1783,52 @@
 
             try {
                 const state = JSON.parse(data);
-                if (!state || !state.status) {
-                    clearActiveState();
+                if (!state || !state.status) { clearActiveState(); return; }
+
+                // status:recovery → 復帰モード付き初期画面へ直接遷移
+                if (state.status === 'recovery') {
+                    isRecoveryMode = true;
+                    lastTaskName = state.taskName || '';
+                    lastPauseType = state.pauseType || '';
+                    pausedAt = state.pausedAt || null;
+                    renderMainScreen();
                     return;
                 }
+
+                // status:focus → recovery-banner（ページ再読み込み/異常終了後の復旧用）
+                if (state.status !== 'focus') { clearActiveState(); return; }
 
                 const banner = document.getElementById('recovery-banner');
                 const text = document.getElementById('recovery-text');
-
-                if (state.status === 'focus') {
-                    const elapsed = Math.floor((Date.now() - state.focusStartedAt) / 1000);
-                    text.innerText = '集中中の状態が残っています（' + state.taskName + ' / ' + formatElapsedTime(elapsed) + '経過）';
-                } else if (state.status === 'pause') {
-                    text.innerText = '一時中断中の状態が残っています（' + state.taskName + '）';
-                } else {
-                    clearActiveState();
-                    return;
-                }
-
+                const elapsed = Math.floor((Date.now() - state.focusStartedAt) / 1000);
+                text.innerText = '集中中の状態が残っています（' + state.taskName + ' / ' + formatElapsedTime(elapsed) + '経過）';
                 banner.classList.add('active');
 
                 document.getElementById('btn-recovery-resume').onclick = () => {
                     banner.classList.remove('active');
                     initAudio();
-
-                    if (state.status === 'focus') {
-                        currentTaskName = state.taskName;
-                        focusSegmentStartedAt = state.focusStartedAt;
-                        // 既に通知済みの節目をスキップ
-                        const elapsed = Math.floor((Date.now() - focusSegmentStartedAt) / 1000);
-                        lastNotifiedMilestone = Math.floor(elapsed / MILESTONE_INTERVAL) * MILESTONE_INTERVAL;
-
-                        document.getElementById('focus-task-display').innerText = currentTaskName;
-                        switchScreen('focus-screen');
-                        clearAllIntervals();
-                        focusIntervalId = setInterval(tickFocusTimer, 1000);
-                        tickFocusTimer(); // 即座に表示更新
-                    } else if (state.status === 'pause') {
-                        currentTaskName = state.taskName;
-                        pauseStartedAt = state.pauseStartedAt;
-                        switchScreen('pause-screen');
-                        clearAllIntervals();
-                        pauseIntervalId = setInterval(tickPauseTimer, 1000);
-                        tickPauseTimer(); // 即座に表示更新
-                    }
+                    currentTaskName = state.taskName;
+                    focusSegmentStartedAt = state.focusStartedAt;
+                    const el = Math.floor((Date.now() - focusSegmentStartedAt) / 1000);
+                    lastNotifiedMilestone = Math.floor(el / MILESTONE_INTERVAL) * MILESTONE_INTERVAL;
+                    document.getElementById('focus-task-display').innerText = currentTaskName;
+                    switchScreen('focus-screen');
+                    clearAllIntervals();
+                    focusIntervalId = setInterval(tickFocusTimer, 1000);
+                    tickFocusTimer();
                 };
 
                 document.getElementById('btn-recovery-discard').onclick = () => {
                     banner.classList.remove('active');
-
-                    // 集中中だった場合、その区間を記録してから破棄
-                    if (state.status === 'focus' && state.focusStartedAt) {
+                    if (state.focusStartedAt) {
                         const endedAt = Date.now();
                         const seconds = Math.round((endedAt - state.focusStartedAt) / 1000);
-                        if (seconds > 0) {
-                            saveFocusSegment(state.taskName, state.focusStartedAt, endedAt, seconds);
-                        }
+                        if (seconds > 0) saveFocusSegment(state.taskName, state.focusStartedAt, endedAt, seconds);
                     }
-
                     clearActiveState();
                 };
 
-            } catch (e) {
-                clearActiveState();
-            }
+            } catch (e) { clearActiveState(); }
         }
 
         // ================= Utility Functions =================
@@ -1777,10 +1868,6 @@
             if (focusIntervalId) {
                 clearInterval(focusIntervalId);
                 focusIntervalId = null;
-            }
-            if (pauseIntervalId) {
-                clearInterval(pauseIntervalId);
-                pauseIntervalId = null;
             }
         }
 
