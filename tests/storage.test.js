@@ -1,0 +1,271 @@
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import {
+  STORAGE_KEYS,
+  generateId,
+  loadLogs,
+  saveLogs,
+  loadTasks,
+  saveTasks,
+  loadSettings,
+  saveSettings,
+  saveActiveState,
+  clearActiveState,
+  saveFocusSegment,
+} from '../src/storage.js';
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+describe('loadLogs / saveLogs', () => {
+  it('未保存時は空オブジェクトを返す', () => {
+    expect(loadLogs()).toEqual({});
+  });
+
+  it('保存→読込の往復', () => {
+    const data = { '2025-01-15': [{ id: 'a', taskName: 'T', startedAt: 1, endedAt: 2, seconds: 1 }] };
+    saveLogs(data);
+    expect(loadLogs()).toEqual(data);
+  });
+
+  it('不正JSONは空オブジェクトを返す', () => {
+    localStorage.setItem(STORAGE_KEYS.logs, 'not json');
+    expect(loadLogs()).toEqual({});
+  });
+
+  it('正しいストレージキー logs_v2 を使用', () => {
+    saveLogs({ test: [] });
+    expect(localStorage.getItem('logs_v2')).not.toBeNull();
+  });
+
+  it('上書き動作', () => {
+    saveLogs({ first: [] });
+    saveLogs({ second: [] });
+    const result = loadLogs();
+    expect(result).toEqual({ second: [] });
+    expect(result.first).toBeUndefined();
+  });
+});
+
+describe('loadTasks / saveTasks', () => {
+  it('未保存時はデフォルト [""] を返す', () => {
+    expect(loadTasks()).toEqual(['']);
+  });
+
+  it('保存→読込の往復', () => {
+    const tasks = ['タスクA', 'タスクB'];
+    saveTasks(tasks);
+    expect(loadTasks()).toEqual(tasks);
+  });
+
+  it('空配列はデフォルトに戻る', () => {
+    localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify([]));
+    expect(loadTasks()).toEqual(['']);
+  });
+
+  it('配列でない値はデフォルトに戻る', () => {
+    localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify('string'));
+    expect(loadTasks()).toEqual(['']);
+  });
+
+  it('不正JSONはデフォルトに戻る', () => {
+    localStorage.setItem(STORAGE_KEYS.tasks, 'broken');
+    expect(loadTasks()).toEqual(['']);
+  });
+
+  it('正しいキー tasks_v2 を使用', () => {
+    saveTasks(['A']);
+    expect(localStorage.getItem('tasks_v2')).not.toBeNull();
+  });
+});
+
+describe('loadSettings / saveSettings', () => {
+  it('未保存時はデフォルト設定を返す', () => {
+    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true });
+  });
+
+  it('保存→読込の往復', () => {
+    const settings = { milestoneEnabled: false, soundEnabled: false };
+    saveSettings(settings);
+    expect(loadSettings()).toEqual(settings);
+  });
+
+  it('部分的設定は残りをデフォルトで補完', () => {
+    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ milestoneEnabled: false }));
+    expect(loadSettings()).toEqual({ milestoneEnabled: false, soundEnabled: true });
+  });
+
+  it('型が不正なフィールドはデフォルト維持', () => {
+    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ milestoneEnabled: 'yes', soundEnabled: 42 }));
+    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true });
+  });
+
+  it('不正JSONはデフォルトに戻る', () => {
+    localStorage.setItem(STORAGE_KEYS.settings, 'broken');
+    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true });
+  });
+
+  it('正しいキー settings_v2 を使用', () => {
+    saveSettings({ milestoneEnabled: true, soundEnabled: true });
+    expect(localStorage.getItem('settings_v2')).not.toBeNull();
+  });
+});
+
+describe('saveActiveState / clearActiveState', () => {
+  it('保存→localStorageに存在確認', () => {
+    saveActiveState({ status: 'focus', taskName: 'テスト' });
+    expect(localStorage.getItem('activeState_v2')).not.toBeNull();
+  });
+
+  it('クリア→localStorageから削除確認', () => {
+    saveActiveState({ status: 'focus' });
+    clearActiveState();
+    expect(localStorage.getItem('activeState_v2')).toBeNull();
+  });
+
+  it('オブジェクト形式で正しく保存・復元', () => {
+    const state = { status: 'focus', taskName: 'テスト', focusStartedAt: 1234567890 };
+    saveActiveState(state);
+    const restored = JSON.parse(localStorage.getItem('activeState_v2'));
+    expect(restored).toEqual(state);
+  });
+});
+
+describe('generateId', () => {
+  it('文字列を返す', () => {
+    expect(typeof generateId()).toBe('string');
+  });
+
+  it('空文字ではない', () => {
+    expect(generateId().length).toBeGreaterThan(0);
+  });
+
+  it('連続2回呼び出しで異なる値', () => {
+    const id1 = generateId();
+    const id2 = generateId();
+    expect(id1).not.toBe(id2);
+  });
+});
+
+describe('saveFocusSegment', () => {
+  it('正常保存', () => {
+    const startedAt = new Date(2025, 0, 15, 10, 0).getTime();
+    const endedAt = startedAt + 900000;
+    saveFocusSegment('タスクA', startedAt, endedAt, 900);
+    const logs = loadLogs();
+    expect(logs['2025-01-15']).toBeDefined();
+    expect(logs['2025-01-15']).toHaveLength(1);
+    expect(logs['2025-01-15'][0].taskName).toBe('タスクA');
+    expect(logs['2025-01-15'][0].seconds).toBe(900);
+  });
+
+  it('seconds=0は保存しない', () => {
+    const startedAt = new Date(2025, 0, 15, 10, 0).getTime();
+    saveFocusSegment('タスクA', startedAt, startedAt, 0);
+    expect(loadLogs()).toEqual({});
+  });
+
+  it('seconds<0は保存しない', () => {
+    const startedAt = new Date(2025, 0, 15, 10, 0).getTime();
+    saveFocusSegment('タスクA', startedAt, startedAt, -1);
+    expect(loadLogs()).toEqual({});
+  });
+
+  it('既存ログへの追加', () => {
+    const startedAt1 = new Date(2025, 0, 15, 10, 0).getTime();
+    const startedAt2 = new Date(2025, 0, 15, 14, 0).getTime();
+    saveFocusSegment('タスクA', startedAt1, startedAt1 + 900000, 900);
+    saveFocusSegment('タスクB', startedAt2, startedAt2 + 1800000, 1800);
+    const logs = loadLogs();
+    expect(logs['2025-01-15']).toHaveLength(2);
+  });
+
+  it('セグメント構造に全フィールドが含まれる', () => {
+    const startedAt = new Date(2025, 0, 15, 10, 0).getTime();
+    const endedAt = startedAt + 900000;
+    saveFocusSegment('タスクA', startedAt, endedAt, 900);
+    const segment = loadLogs()['2025-01-15'][0];
+    expect(segment).toHaveProperty('id');
+    expect(segment).toHaveProperty('taskName', 'タスクA');
+    expect(segment).toHaveProperty('startedAt', startedAt);
+    expect(segment).toHaveProperty('endedAt', endedAt);
+    expect(segment).toHaveProperty('seconds', 900);
+  });
+
+  it('4AM境界: 3:30AMのstartedAtは前日キーに保存', () => {
+    const startedAt = new Date(2025, 0, 15, 3, 30).getTime();
+    const endedAt = startedAt + 900000;
+    saveFocusSegment('タスクA', startedAt, endedAt, 900);
+    const logs = loadLogs();
+    expect(logs['2025-01-14']).toBeDefined();
+    expect(logs['2025-01-14']).toHaveLength(1);
+    expect(logs['2025-01-15']).toBeUndefined();
+  });
+});
+
+describe('save関数の戻り値', () => {
+  it('saveLogs: 正常時はtrueを返す', () => {
+    expect(saveLogs({ test: [] })).toBe(true);
+  });
+
+  it('saveTasks: 正常時はtrueを返す', () => {
+    expect(saveTasks(['A'])).toBe(true);
+  });
+
+  it('saveSettings: 正常時はtrueを返す', () => {
+    expect(saveSettings({ milestoneEnabled: true, soundEnabled: true })).toBe(true);
+  });
+
+  it('saveActiveState: 正常時はtrueを返す', () => {
+    expect(saveActiveState({ status: 'focus' })).toBe(true);
+  });
+
+  it('saveFocusSegment: 正常時はtrueを返す', () => {
+    const startedAt = new Date(2025, 0, 15, 10, 0).getTime();
+    expect(saveFocusSegment('タスク', startedAt, startedAt + 60000, 60)).toBe(true);
+  });
+
+  it('saveFocusSegment: seconds<=0はfalseを返す', () => {
+    const startedAt = new Date(2025, 0, 15, 10, 0).getTime();
+    expect(saveFocusSegment('タスク', startedAt, startedAt, 0)).toBe(false);
+  });
+});
+
+describe('QuotaExceededError ハンドリング', () => {
+  let setItemSpy;
+
+  beforeEach(() => {
+    setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota exceeded', 'QuotaExceededError');
+    });
+  });
+
+  afterEach(() => {
+    setItemSpy.mockRestore();
+  });
+
+  it('saveLogs: 例外時はfalseを返し例外を投げない', () => {
+    expect(saveLogs({ test: [] })).toBe(false);
+  });
+
+  it('saveTasks: 例外時はfalseを返し例外を投げない', () => {
+    expect(saveTasks(['A'])).toBe(false);
+  });
+
+  it('saveSettings: 例外時はfalseを返し例外を投げない', () => {
+    expect(saveSettings({ milestoneEnabled: true, soundEnabled: true })).toBe(false);
+  });
+
+  it('saveActiveState: 例外時はfalseを返し例外を投げない', () => {
+    expect(saveActiveState({ status: 'focus' })).toBe(false);
+  });
+
+  it('saveFocusSegment: 内部saveLogs失敗でも例外を投げない', () => {
+    setItemSpy.mockRestore();
+    setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota exceeded', 'QuotaExceededError');
+    });
+    const startedAt = new Date(2025, 0, 15, 10, 0).getTime();
+    expect(saveFocusSegment('タスク', startedAt, startedAt + 60000, 60)).toBe(false);
+  });
+});
