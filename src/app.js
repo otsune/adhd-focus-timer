@@ -13,6 +13,10 @@ import {
   saveFocusSegment,
 } from './storage.js';
 import {
+  serializeTasksToTodoTxt,
+  extractActiveTasksFromTodoTxt,
+} from './todotxt.js';
+import {
   getTotalFocusTime,
   getLongestFocusSegment,
   getStartCount,
@@ -61,6 +65,8 @@ const TRANSLATIONS = {
     saveAndClose: '保存して閉じる',
     exportJson: '📥 JSON エクスポート',
     exportCsv: '📥 CSV エクスポート',
+    exportTodoTxt: '📥 todo.txt エクスポート',
+    importTodoTxt: '📤 todo.txt インポート',
     taskFallback: 'タスク',
     taskPlaceholder: 'タスクを入力...',
     taskInputAria: 'タスク{index}入力',
@@ -88,7 +94,10 @@ const TRANSLATIONS = {
     recoveryBannerActive: '集中中の状態が残っています（{task} / {elapsed}経過）',
     exportJsonName: 'adhd_focus_log_{day}.json',
     exportCsvName: 'adhd_focus_log_{day}.csv',
+    exportTodoTxtName: 'adhd_focus_tasks_{day}.txt',
     csvHeader: '日付,タスク名,開始時刻,終了時刻,集中秒数',
+    importTodoTxtEmpty: 'todo.txt から取り込める未完了タスクが見つかりませんでした。',
+    importTodoTxtDone: '{count}件のタスクを読み込みました。',
   },
   en: {
     appTitle: 'ADHD Focus Timer',
@@ -126,6 +135,8 @@ const TRANSLATIONS = {
     saveAndClose: 'Save and close',
     exportJson: '📥 Export JSON',
     exportCsv: '📥 Export CSV',
+    exportTodoTxt: '📥 Export todo.txt',
+    importTodoTxt: '📤 Import todo.txt',
     taskFallback: 'Task',
     taskPlaceholder: 'Enter a task...',
     taskInputAria: 'Task {index} input',
@@ -153,7 +164,10 @@ const TRANSLATIONS = {
     recoveryBannerActive: 'An active focus state remains ({task} / {elapsed} elapsed)',
     exportJsonName: 'adhd_focus_log_{day}.json',
     exportCsvName: 'adhd_focus_log_{day}.csv',
+    exportTodoTxtName: 'adhd_focus_tasks_{day}.txt',
     csvHeader: 'Date,Task,Start time,End time,Focus seconds',
+    importTodoTxtEmpty: 'No active tasks could be imported from todo.txt.',
+    importTodoTxtDone: 'Imported {count} tasks.',
   },
 };
 
@@ -288,6 +302,8 @@ function applyStaticTranslations() {
   setText('btn-save-settings', t('saveAndClose'));
   setText('btn-export-json', t('exportJson'));
   setText('btn-export-csv', t('exportCsv'));
+  setText('btn-export-todotxt', t('exportTodoTxt'));
+  setText('btn-import-todotxt', t('importTodoTxt'));
 }
 
 function updateFocusScreenTranslations() {
@@ -860,6 +876,31 @@ function exportLogsAsCSV() {
   downloadFile('\uFEFF' + csv, t('exportCsvName', { day: todayKey }), 'text/csv;charset=utf-8');
 }
 
+function exportTasksAsTodoTxt() {
+  const content = serializeTasksToTodoTxt(tasks);
+  const todayKey = getTodayKey();
+  downloadFile(content, t('exportTodoTxtName', { day: todayKey }), 'text/plain;charset=utf-8');
+}
+
+async function handleImportTodoTxt(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const text = await file.text();
+  const importedTasks = extractActiveTasksFromTodoTxt(text);
+  event.target.value = '';
+
+  if (importedTasks.length === 0) {
+    alert(t('importTodoTxtEmpty'));
+    return;
+  }
+
+  tasks = importedTasks.slice(0, MAX_TASKS);
+  saveTasks(tasks);
+  renderMainScreen();
+  alert(t('importTodoTxtDone', { count: tasks.length }));
+}
+
 function downloadFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -1073,6 +1114,11 @@ export function initApp() {
   document.getElementById('btn-save-settings').addEventListener('click', handleSaveSettings);
   document.getElementById('btn-export-json').addEventListener('click', exportLogsAsJSON);
   document.getElementById('btn-export-csv').addEventListener('click', exportLogsAsCSV);
+  document.getElementById('btn-export-todotxt').addEventListener('click', exportTasksAsTodoTxt);
+  document.getElementById('btn-import-todotxt').addEventListener('click', () => {
+    document.getElementById('input-import-todotxt').click();
+  });
+  document.getElementById('input-import-todotxt').addEventListener('change', handleImportTodoTxt);
   document.getElementById('undo-toast-btn').addEventListener('click', undoRemoveTask);
   document.querySelectorAll('input[name="setting-theme"]').forEach((radio) => {
     radio.addEventListener('change', handleThemePreview);
