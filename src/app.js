@@ -46,9 +46,20 @@ let pausedAt = null;
 let settings = {
   milestoneEnabled: true,
   soundEnabled: true,
+  themeMode: 'system',
 };
 
 let audioCtx;
+const systemThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
+
+function applyTheme(mode) {
+  const resolvedTheme = mode === 'system'
+    ? (systemThemeMedia.matches ? 'light' : 'dark')
+    : mode;
+
+  document.documentElement.dataset.themeMode = mode;
+  document.documentElement.dataset.theme = resolvedTheme;
+}
 
 function initAudio() {
   if (!audioCtx) {
@@ -441,7 +452,7 @@ function showSummary() {
 
     html += '<div class="summary-stats">';
     html += '<div class="summary-stat-card"><div class="summary-stat-label">最初の着手</div><div class="summary-stat-value">' + firstStartTime + '</div></div>';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">午前中に着手</div><div class="summary-stat-value" style="color:' + (inMorning ? '#4fc3f7' : '#999') + '">' + (inMorning ? '✓ できた' : '—') + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">午前中に着手</div><div class="summary-stat-value ' + (inMorning ? 'summary-stat-success' : 'summary-stat-muted') + '">' + (inMorning ? '✓ できた' : '—') + '</div></div>';
     html += '<div class="summary-stat-card"><div class="summary-stat-label">最長連続</div><div class="summary-stat-value">' + formatDuration(longestSeconds) + '</div></div>';
     html += '<div class="summary-stat-card"><div class="summary-stat-label">着手回数</div><div class="summary-stat-value">' + startCount + '回</div></div>';
     html += '</div>';
@@ -541,11 +552,14 @@ function showSettings() {
   lastFocusedElement = document.activeElement;
   document.getElementById('setting-milestone').checked = settings.milestoneEnabled;
   document.getElementById('setting-sound').checked = settings.soundEnabled;
+  const checkedThemeRadio = document.querySelector(`input[name="setting-theme"][value="${settings.themeMode}"]`);
+  if (checkedThemeRadio) checkedThemeRadio.checked = true;
 
   const settingsModal = document.getElementById('settings-modal');
   settingsModal.classList.add('active');
   currentTrapCleanup = trapFocus(settingsModal);
-  document.getElementById('setting-milestone').focus();
+  const firstThemeRadio = document.querySelector('input[name="setting-theme"]:checked') || document.getElementById('setting-milestone');
+  firstThemeRadio.focus();
 }
 
 function handleSaveSettings() {
@@ -555,7 +569,9 @@ function handleSaveSettings() {
   }
   settings.milestoneEnabled = document.getElementById('setting-milestone').checked;
   settings.soundEnabled = document.getElementById('setting-sound').checked;
+  settings.themeMode = document.querySelector('input[name="setting-theme"]:checked')?.value || 'system';
   saveSettings(settings);
+  applyTheme(settings.themeMode);
   document.getElementById('settings-modal').classList.remove('active');
 
   if (lastFocusedElement && lastFocusedElement.isConnected) {
@@ -696,6 +712,7 @@ export function initApp() {
   appInitialized = true;
 
   settings = loadSettings();
+  applyTheme(settings.themeMode);
   tasks = loadTasks();
   renderMainScreen();
 
@@ -717,6 +734,11 @@ export function initApp() {
   document.getElementById('btn-export-csv').addEventListener('click', exportLogsAsCSV);
   document.getElementById('undo-toast-btn').addEventListener('click', undoRemoveTask);
   document.addEventListener('keydown', handleGlobalKeydown);
+  systemThemeMedia.addEventListener('change', () => {
+    if (settings.themeMode === 'system') {
+      applyTheme('system');
+    }
+  });
 
   checkActiveState();
 }

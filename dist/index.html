@@ -21,6 +21,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ADHD Focus Timer</title>
     <style>
+        :root {
+            color-scheme: light;
+            --bg: #f5f7fb;
+            --bg-elevated: #ffffff;
+            --bg-strong: #e8edf5;
+            --bg-overlay: rgba(241, 245, 249, 0.96);
+            --bg-overlay-strong: rgba(248, 250, 252, 0.97);
+            --fg: #18212f;
+            --fg-soft: #5b6778;
+            --fg-muted: #7a8699;
+            --border: #c9d4e3;
+            --border-strong: #aeb9ca;
+            --accent: #1768d1;
+            --accent-strong: #0c8bb0;
+            --accent-contrast: #ffffff;
+            --accent-soft: rgba(23, 104, 209, 0.12);
+            --danger: #c83232;
+            --danger-shadow: #891b1b;
+            --success: #2f9e44;
+            --success-shadow: #1f6f31;
+            --focus-ring: #36a3c9;
+            --shadow: rgba(15, 23, 42, 0.16);
+        }
+
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --bg: #000000;
+            --bg-elevated: #1a1a1a;
+            --bg-strong: #222222;
+            --bg-overlay: rgba(0, 0, 0, 0.97);
+            --bg-overlay-strong: rgba(0, 0, 0, 0.97);
+            --fg: #ffffff;
+            --fg-soft: #e0e0e0;
+            --fg-muted: #888888;
+            --border: #333333;
+            --border-strong: #555555;
+            --accent: #64b5f6;
+            --accent-strong: #4fc3f7;
+            --accent-contrast: #000000;
+            --accent-soft: rgba(100, 181, 246, 0.15);
+            --danger: #d32f2f;
+            --danger-shadow: #9a0007;
+            --success: #4caf50;
+            --success-shadow: #2e7d32;
+            --focus-ring: #4fc3f7;
+            --shadow: rgba(0, 0, 0, 0.6);
+        }
+
         /* ============== Reset & Base ============== */
         * {
             box-sizing: border-box;
@@ -29,8 +77,8 @@
         }
 
         body {
-            background-color: #000;
-            color: #fff;
+            background-color: var(--bg);
+            color: var(--fg);
             font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
             font-weight: bold;
             display: flex;
@@ -76,7 +124,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            background: #222;
+            background: var(--bg-strong);
             padding: 15px 25px;
             border-radius: 16px;
             transition: transform 0.2s;
@@ -84,7 +132,7 @@
         }
 
         .task-slot:focus-within {
-            background: #333;
+            background: var(--bg-elevated);
             transform: scale(1.02);
         }
 
@@ -92,7 +140,7 @@
             flex: 1;
             background: transparent;
             border: none;
-            color: #fff;
+            color: var(--fg);
             font-size: 36px;
             font-weight: bold;
             outline: none;
@@ -100,13 +148,13 @@
         }
 
         .task-slot input::placeholder {
-            color: #888;
+            color: var(--fg-muted);
             font-size: 30px;
         }
 
         .btn-remove {
             background: transparent;
-            color: #888;
+            color: var(--fg-muted);
             border: none;
             font-size: 40px;
             cursor: pointer;
@@ -115,13 +163,13 @@
         }
 
         .btn-remove:hover {
-            color: #ff5252;
+            color: var(--danger);
             transform: scale(1.2);
         }
 
         .btn-start-direct {
-            background: #444;
-            color: #fff;
+            background: var(--border-strong);
+            color: var(--fg);
             border: none;
             padding: 15px 30px;
             font-size: 28px;
@@ -133,7 +181,7 @@
         }
 
         .btn-start-direct:hover {
-            background: #666;
+            background: var(--fg-muted);
         }
 
         .controls-row {
@@ -145,9 +193,9 @@
         }
 
         .btn-add-task {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border: 2px dashed #666;
+            background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+            color: var(--fg);
+            border: 2px dashed var(--border-strong);
             padding: 15px 40px;
             font-size: 24px;
             font-weight: bold;
@@ -157,27 +205,27 @@
         }
 
         .btn-add-task:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: #fff;
+            background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+            border-color: var(--fg);
         }
 
         .btn-add-task:disabled {
             background: transparent;
-            color: #444;
-            border-color: #333;
+            color: var(--border-strong);
+            border-color: var(--border);
             cursor: not-allowed;
         }
 
         .btn-roulette {
-            background: #d32f2f;
-            color: #fff;
+            background: var(--danger);
+            color: var(--accent-contrast);
             border: none;
             padding: 50px 80px;
             font-size: 80px;
             font-weight: bold;
             border-radius: 30px;
             cursor: pointer;
-            box-shadow: 0 15px 0 #9a0007;
+            box-shadow: 0 15px 0 var(--danger-shadow);
             transition: 0.1s;
             width: 100%;
             text-align: center;
@@ -188,7 +236,7 @@
 
         .btn-roulette:active {
             transform: translateY(15px);
-            box-shadow: 0 0 0 #9a0007;
+            box-shadow: 0 0 0 var(--danger-shadow);
         }
 
         .btn-roulette:disabled {
@@ -197,9 +245,9 @@
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            color: #888;
-            border: 2px solid #555;
+            background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+            color: var(--fg-muted);
+            border: 2px solid var(--border-strong);
             padding: 12px 30px;
             font-size: 22px;
             font-weight: bold;
@@ -209,15 +257,15 @@
         }
 
         .btn-secondary:hover {
-            color: #fff;
-            border-color: #aaa;
-            background: rgba(255, 255, 255, 0.15);
+            color: var(--fg);
+            border-color: var(--fg-muted);
+            background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
         }
 
         .btn-summary {
-            background: rgba(100, 181, 246, 0.15);
-            color: #64b5f6;
-            border: 2px solid #64b5f6;
+            background: var(--accent-soft);
+            color: var(--accent);
+            border: 2px solid var(--accent);
             padding: 12px 30px;
             font-size: 22px;
             font-weight: bold;
@@ -227,7 +275,7 @@
         }
 
         .btn-summary:hover {
-            background: rgba(100, 181, 246, 0.3);
+            background: color-mix(in srgb, var(--accent) 24%, transparent);
         }
 
         /* ============== Focus Screen ============== */
@@ -242,7 +290,7 @@
             line-height: 1.2;
             padding: 0 20px;
             word-break: break-word;
-            color: #e0e0e0;
+            color: var(--fg-soft);
         }
 
         #focus-timer-display {
@@ -250,7 +298,7 @@
             line-height: 1;
             font-variant-numeric: tabular-nums;
             user-select: none;
-            color: #fff;
+            color: var(--fg);
             transition: font-size 0.3s ease;
         }
 
@@ -261,8 +309,8 @@
         }
 
         .btn-pause {
-            background: #333;
-            color: #fff;
+            background: var(--border);
+            color: var(--fg);
             border: none;
             padding: 25px 60px;
             font-size: 40px;
@@ -273,13 +321,13 @@
         }
 
         .btn-pause:hover {
-            background: #555;
+            background: var(--border-strong);
         }
 
         .btn-finish {
-            background: rgba(255, 255, 255, 0.08);
-            color: #ccc;
-            border: 2px solid #888;
+            background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+            color: var(--fg-soft);
+            border: 2px solid var(--fg-muted);
             padding: 25px 60px;
             font-size: 40px;
             font-weight: bold;
@@ -289,20 +337,20 @@
         }
 
         .btn-finish:hover {
-            color: #fff;
-            border-color: #bbb;
-            background: rgba(255, 255, 255, 0.15);
+            color: var(--fg);
+            border-color: var(--fg-soft);
+            background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
         }
 
         /* ============== Pause Screen ============== */
         #pause-screen {
-            background-color: #0a0a0a;
+            background-color: color-mix(in srgb, var(--bg) 94%, #000 6%);
         }
 
         #pause-title {
             font-size: 6vw;
             margin-bottom: 20px;
-            color: #888;
+            color: var(--fg-muted);
         }
 
         #pause-timer-display {
@@ -310,7 +358,7 @@
             line-height: 1;
             font-variant-numeric: tabular-nums;
             user-select: none;
-            color: #666;
+            color: var(--border-strong);
         }
 
         .pause-buttons {
@@ -322,7 +370,7 @@
         }
 
         .btn-resume {
-            background: #4caf50;
+            background: var(--success);
             color: #fff;
             border: none;
             padding: 25px 60px;
@@ -330,18 +378,18 @@
             font-weight: bold;
             border-radius: 16px;
             cursor: pointer;
-            box-shadow: 0 8px 0 #2e7d32;
+            box-shadow: 0 8px 0 var(--success-shadow);
             transition: 0.1s;
         }
 
         .btn-resume:active {
             transform: translateY(8px);
-            box-shadow: 0 0 0 #2e7d32;
+            box-shadow: 0 0 0 var(--success-shadow);
         }
 
         .btn-pause-finish {
-            background: #333;
-            color: #fff;
+            background: var(--border);
+            color: var(--fg);
             border: none;
             padding: 25px 60px;
             font-size: 40px;
@@ -352,13 +400,13 @@
         }
 
         .btn-pause-finish:hover {
-            background: #555;
+            background: var(--border-strong);
         }
 
         .btn-return-main {
             background: transparent;
-            color: #888;
-            border: 2px solid #555;
+            color: var(--fg-muted);
+            border: 2px solid var(--border-strong);
             padding: 20px 40px;
             font-size: 30px;
             font-weight: bold;
@@ -369,8 +417,8 @@
         }
 
         .btn-return-main:hover {
-            color: #fff;
-            border-color: #aaa;
+            color: var(--fg);
+            border-color: var(--fg-soft);
         }
 
         /* ============== Summary Modal ============== */
@@ -380,7 +428,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.97);
+            background: var(--bg-overlay-strong);
             display: none;
             flex-direction: column;
             justify-content: center;
@@ -397,7 +445,7 @@
         #summary-modal h2 {
             font-size: 44px;
             margin-bottom: 30px;
-            color: #64b5f6;
+            color: var(--accent);
         }
 
         .summary-hero {
@@ -407,14 +455,14 @@
 
         .summary-hero-label {
             font-size: 28px;
-            color: #888;
+            color: var(--fg-muted);
             margin-bottom: 10px;
         }
 
         .summary-hero-value {
             font-size: 72px;
-            color: #4fc3f7;
-            text-shadow: 0 0 30px rgba(79, 195, 247, 0.3);
+            color: var(--accent-strong);
+            text-shadow: 0 0 30px color-mix(in srgb, var(--accent-strong) 30%, transparent);
             font-variant-numeric: tabular-nums;
         }
 
@@ -427,8 +475,8 @@
         }
 
         .summary-stat-card {
-            background: #1a1a1a;
-            border: 1px solid #333;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
             border-radius: 16px;
             padding: 20px 30px;
             text-align: center;
@@ -437,20 +485,28 @@
 
         .summary-stat-label {
             font-size: 20px;
-            color: #888;
+            color: var(--fg-muted);
             margin-bottom: 8px;
         }
 
         .summary-stat-value {
             font-size: 36px;
-            color: #e0e0e0;
+            color: var(--fg-soft);
+        }
+
+        .summary-stat-success {
+            color: var(--accent-strong);
+        }
+
+        .summary-stat-muted {
+            color: var(--fg-soft);
         }
 
         .summary-section {
             width: 80%;
             max-width: 800px;
-            background: #1a1a1a;
-            border: 1px solid #333;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
             border-radius: 16px;
             padding: 25px 30px;
             margin-bottom: 20px;
@@ -458,7 +514,7 @@
 
         .summary-section-title {
             font-size: 22px;
-            color: #888;
+            color: var(--fg-muted);
             margin-bottom: 15px;
         }
 
@@ -467,7 +523,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px 0;
-            border-bottom: 1px solid #282828;
+            border-bottom: 1px solid var(--border);
             font-size: 28px;
         }
 
@@ -476,37 +532,37 @@
         }
 
         .ranking-position {
-            color: #999;
+            color: var(--fg-muted);
             width: 40px;
             flex-shrink: 0;
         }
 
         .ranking-task {
-            color: #e0e0e0;
+            color: var(--fg-soft);
             flex: 1;
             margin: 0 15px;
             word-break: break-word;
         }
 
         .ranking-time {
-            color: #64b5f6;
+            color: var(--accent);
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
         }
 
         .best-session-display {
             font-size: 30px;
-            color: #e0e0e0;
+            color: var(--fg-soft);
         }
 
         .best-session-display .task-name {
-            color: #4fc3f7;
+            color: var(--accent-strong);
         }
 
         .summary-empty {
             text-align: center;
             font-size: 30px;
-            color: #999;
+            color: var(--fg-muted);
             padding: 40px 0;
         }
 
@@ -519,8 +575,8 @@
         }
 
         .btn-close-summary {
-            background: #333;
-            color: #fff;
+            background: var(--border);
+            color: var(--fg);
             border: none;
             padding: 20px 60px;
             font-size: 36px;
@@ -531,13 +587,13 @@
         }
 
         .btn-close-summary:hover {
-            background: #555;
+            background: var(--border-strong);
         }
 
         .btn-export {
-            background: rgba(255, 255, 255, 0.08);
-            color: #aaa;
-            border: 2px solid #555;
+            background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+            color: var(--fg-muted);
+            border: 2px solid var(--border-strong);
             padding: 15px 30px;
             font-size: 22px;
             font-weight: bold;
@@ -547,15 +603,15 @@
         }
 
         .btn-export:hover {
-            color: #fff;
-            border-color: #aaa;
-            background: rgba(255, 255, 255, 0.15);
+            color: var(--fg);
+            border-color: var(--fg-muted);
+            background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
         }
 
         .btn-reset-log {
             background: transparent;
-            color: #888;
-            border: 1px solid #555;
+            color: var(--fg-muted);
+            border: 1px solid var(--border-strong);
             padding: 12px 30px;
             font-size: 20px;
             font-weight: bold;
@@ -566,8 +622,8 @@
         }
 
         .btn-reset-log:hover {
-            color: #ff5252;
-            border-color: #ff5252;
+            color: var(--danger);
+            border-color: var(--danger);
         }
 
         /* ============== Settings Modal ============== */
@@ -577,7 +633,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.97);
+            background: var(--bg-overlay-strong);
             display: none;
             flex-direction: column;
             justify-content: center;
@@ -592,14 +648,14 @@
         #settings-modal h2 {
             font-size: 50px;
             margin-bottom: 30px;
-            color: #aaa;
+            color: var(--fg-muted);
         }
 
         .settings-content {
             width: 80%;
             max-width: 600px;
-            background: #1a1a1a;
-            border: 2px solid #333;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border);
             border-radius: 20px;
             padding: 40px;
             margin-bottom: 30px;
@@ -610,7 +666,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 20px 0;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid var(--border);
         }
 
         .settings-row:last-child {
@@ -619,7 +675,58 @@
 
         .settings-label {
             font-size: 30px;
-            color: #e0e0e0;
+            color: var(--fg-soft);
+        }
+
+        .settings-row-stack {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+        }
+
+        .theme-mode-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .theme-option {
+            display: block;
+            cursor: pointer;
+        }
+
+        .theme-option input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .theme-option-label {
+            display: block;
+            padding: 14px 18px;
+            text-align: center;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            background: var(--bg-strong);
+            color: var(--fg-muted);
+            transition: 0.2s;
+        }
+
+        .theme-option input:checked + .theme-option-label {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .theme-option input:focus-visible + .theme-option-label {
+            outline: 3px solid color-mix(in srgb, var(--focus-ring) 45%, transparent);
+            outline-offset: 2px;
         }
 
         /* Toggle Switch */
@@ -648,7 +755,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #444;
+            background-color: var(--border-strong);
             transition: 0.3s;
             border-radius: 38px;
         }
@@ -660,13 +767,13 @@
             width: 28px;
             left: 5px;
             bottom: 5px;
-            background-color: #fff;
+            background-color: var(--bg-elevated);
             transition: 0.3s;
             border-radius: 50%;
         }
 
         .toggle-switch input:checked+.toggle-slider {
-            background-color: #4caf50;
+            background-color: var(--success);
         }
 
         .toggle-switch input:checked+.toggle-slider:before {
@@ -674,7 +781,7 @@
         }
 
         .btn-save-settings {
-            background: #4caf50;
+            background: var(--success);
             color: #fff;
             border: none;
             padding: 20px 60px;
@@ -683,12 +790,12 @@
             border-radius: 16px;
             cursor: pointer;
             transition: 0.2s;
-            box-shadow: 0 6px 0 #2e7d32;
+            box-shadow: 0 6px 0 var(--success-shadow);
         }
 
         .btn-save-settings:active {
             transform: translateY(6px);
-            box-shadow: 0 0 0 #2e7d32;
+            box-shadow: 0 0 0 var(--success-shadow);
         }
 
         /* ============== Flash Overlay ============== */
@@ -728,17 +835,17 @@
             top: 60px;
             left: 50%;
             transform: translateX(-50%);
-            background: #222;
-            border: 2px solid #555;
+            background: var(--bg-strong);
+            border: 2px solid var(--border-strong);
             padding: 15px 40px;
             border-radius: 40px;
             font-size: 32px;
             font-weight: bold;
-            color: #fff;
+            color: var(--fg);
             pointer-events: none;
             opacity: 0;
             z-index: 60;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 10px 25px var(--shadow);
             white-space: nowrap;
         }
 
@@ -771,8 +878,8 @@
             bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            background: #333;
-            border: 1px solid #555;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
             padding: 15px 25px;
             border-radius: 14px;
             display: none;
@@ -780,12 +887,12 @@
             gap: 15px;
             z-index: 100;
             font-size: 22px;
-            color: #e0e0e0;
+            color: var(--fg-soft);
         }
         #undo-toast.show { display: flex; }
         #undo-toast-btn {
-            background: #4fc3f7;
-            color: #000;
+            background: var(--accent-strong);
+            color: var(--accent-contrast);
             border: none;
             padding: 8px 20px;
             font-size: 20px;
@@ -800,8 +907,8 @@
             top: 0;
             left: 0;
             width: 100%;
-            background: #1a1a2e;
-            border-bottom: 2px solid #4fc3f7;
+            background: color-mix(in srgb, var(--bg-elevated) 92%, var(--accent-soft));
+            border-bottom: 2px solid var(--accent-strong);
             padding: 20px 30px;
             display: none;
             justify-content: space-between;
@@ -816,7 +923,7 @@
 
         #recovery-banner .recovery-text {
             font-size: 24px;
-            color: #4fc3f7;
+            color: var(--accent-strong);
         }
 
         #recovery-banner .recovery-actions {
@@ -835,13 +942,13 @@
         }
 
         .btn-recovery-resume {
-            background: #4caf50;
+            background: var(--success);
             color: #fff;
         }
 
         .btn-recovery-discard {
-            background: #333;
-            color: #aaa;
+            background: var(--border);
+            color: var(--fg-muted);
         }
         /* ============== Mobile Responsiveness ============== */
         @media (max-width: 768px) {
@@ -870,13 +977,13 @@
             .btn-roulette {
                 padding: 25px;
                 font-size: 28px;
-                box-shadow: 0 8px 0 #9a0007;
+                box-shadow: 0 8px 0 var(--danger-shadow);
                 letter-spacing: 1px;
                 margin-top: 10px;
             }
             .btn-roulette:active {
                 transform: translateY(8px);
-                box-shadow: 0 0 0 #9a0007;
+                box-shadow: 0 0 0 var(--danger-shadow);
             }
             .controls-row {
                 flex-direction: column;
@@ -885,6 +992,9 @@
             .controls-row button {
                 width: 100%;
                 margin: 0;
+            }
+            .theme-mode-group {
+                grid-template-columns: 1fr;
             }
             
             /* Focus / Pause Screen */
@@ -990,8 +1100,8 @@
         }
         /* ============== v2: Away / Meal Buttons ============== */
         .btn-away, .btn-meal {
-            background: #444;
-            color: #fff;
+            background: var(--border-strong);
+            color: var(--fg);
             border: none;
             padding: 25px 50px;
             font-size: 40px;
@@ -1000,7 +1110,7 @@
             cursor: pointer;
             transition: 0.2s;
         }
-        .btn-away:hover, .btn-meal:hover { background: #666; }
+        .btn-away:hover, .btn-meal:hover { background: var(--fg-muted); }
 
         /* ============== v2: Normal Section ============== */
         #normal-section {
@@ -1023,11 +1133,11 @@
             width: 100%;
             text-align: center;
             padding: 16px 20px;
-            background: rgba(79, 195, 247, 0.1);
-            border: 1px solid rgba(79, 195, 247, 0.3);
+            background: color-mix(in srgb, var(--accent-soft) 90%, var(--bg-elevated));
+            border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
             border-radius: 12px;
             font-size: 22px;
-            color: #4fc3f7;
+            color: var(--accent-strong);
         }
         #recovery-resume-area { width: 100%; }
         #recovery-tasks-area {
@@ -1038,7 +1148,7 @@
             width: 100%;
         }
         .btn-resume-main {
-            background: #d32f2f;
+            background: var(--danger);
             color: #fff;
             border: none;
             padding: 40px 60px;
@@ -1048,17 +1158,17 @@
             cursor: pointer;
             width: 100%;
             text-align: center;
-            box-shadow: 0 12px 0 #9a0007;
+            box-shadow: 0 12px 0 var(--danger-shadow);
             transition: 0.1s;
             letter-spacing: 2px;
         }
         .btn-resume-main:active {
             transform: translateY(12px);
-            box-shadow: 0 0 0 #9a0007;
+            box-shadow: 0 0 0 var(--danger-shadow);
         }
         .btn-task-recovery {
-            background: #333;
-            color: #fff;
+            background: var(--border);
+            color: var(--fg);
             border: none;
             padding: 20px 30px;
             font-size: 30px;
@@ -1069,11 +1179,11 @@
             flex: 1;
             min-width: 180px;
         }
-        .btn-task-recovery:hover { background: #555; }
+        .btn-task-recovery:hover { background: var(--border-strong); }
         .btn-roulette-recovery {
-            background: #444;
-            color: #fff;
-            border: 2px solid #666;
+            background: var(--border-strong);
+            color: var(--fg);
+            border: 2px solid var(--fg-muted);
             padding: 20px 60px;
             font-size: 34px;
             font-weight: bold;
@@ -1082,11 +1192,11 @@
             width: 100%;
             transition: 0.2s;
         }
-        .btn-roulette-recovery:hover { background: #555; }
+        .btn-roulette-recovery:hover { background: var(--fg-muted); }
         .btn-finish-recovery {
-            background: rgba(255, 255, 255, 0.08);
-            color: #bbb;
-            border: 2px solid #666;
+            background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+            color: var(--fg-soft);
+            border: 2px solid var(--fg-muted);
             font-size: 28px;
             font-weight: bold;
             border-radius: 14px;
@@ -1096,7 +1206,7 @@
             width: 100%;
             transition: 0.2s;
         }
-        .btn-finish-recovery:hover { color: #fff; border-color: #aaa; background: rgba(255, 255, 255, 0.15); }
+        .btn-finish-recovery:hover { color: var(--fg); border-color: var(--fg-soft); background: color-mix(in srgb, var(--bg-elevated) 94%, transparent); }
         @media (max-width: 768px) {
             .btn-resume-main { font-size: 36px; padding: 25px 30px; }
             .btn-task-recovery { font-size: 22px; padding: 15px 20px; }
@@ -1122,12 +1232,12 @@
         button:focus-visible,
         input:focus-visible,
         a:focus-visible {
-            outline: 2px solid #4fc3f7;
+            outline: 2px solid var(--focus-ring);
             outline-offset: 2px;
         }
 
         .toggle-switch input:focus-visible + .toggle-slider {
-            outline: 2px solid #4fc3f7;
+            outline: 2px solid var(--focus-ring);
             outline-offset: 2px;
         }
     </style>
@@ -1207,6 +1317,23 @@
     <div id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
         <h2 id="settings-modal-title">⚙️ 設定</h2>
         <div class="settings-content">
+            <div class="settings-row settings-row-stack">
+                <span class="settings-label">テーマ</span>
+                <div class="theme-mode-group" role="radiogroup" aria-label="テーマ">
+                    <label class="theme-option">
+                        <input type="radio" name="setting-theme" value="system" checked>
+                        <span class="theme-option-label">システム</span>
+                    </label>
+                    <label class="theme-option">
+                        <input type="radio" name="setting-theme" value="light">
+                        <span class="theme-option-label">ライト</span>
+                    </label>
+                    <label class="theme-option">
+                        <input type="radio" name="setting-theme" value="dark">
+                        <span class="theme-option-label">ダーク</span>
+                    </label>
+                </div>
+            </div>
             <div class="settings-row">
                 <span class="settings-label">節目通知</span>
                 <label class="toggle-switch">
@@ -1454,13 +1581,16 @@ function saveTasks(tasks) {
  * 設定をlocalStorageから読み込んで返す
  */
 function loadSettings() {
-  const defaults = { milestoneEnabled: true, soundEnabled: true };
+  const defaults = { milestoneEnabled: true, soundEnabled: true, themeMode: 'system' };
   const saved = localStorage.getItem(STORAGE_KEYS.settings);
   if (saved) {
     try {
       const s = JSON.parse(saved);
       if (typeof s.milestoneEnabled === 'boolean') defaults.milestoneEnabled = s.milestoneEnabled;
       if (typeof s.soundEnabled === 'boolean') defaults.soundEnabled = s.soundEnabled;
+      if (s.themeMode === 'system' || s.themeMode === 'light' || s.themeMode === 'dark') {
+        defaults.themeMode = s.themeMode;
+      }
     } catch (e) { }
   }
   return defaults;
@@ -1540,9 +1670,20 @@ let pausedAt = null;
 let settings = {
   milestoneEnabled: true,
   soundEnabled: true,
+  themeMode: 'system',
 };
 
 let audioCtx;
+const systemThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
+
+function applyTheme(mode) {
+  const resolvedTheme = mode === 'system'
+    ? (systemThemeMedia.matches ? 'light' : 'dark')
+    : mode;
+
+  document.documentElement.dataset.themeMode = mode;
+  document.documentElement.dataset.theme = resolvedTheme;
+}
 
 function initAudio() {
   if (!audioCtx) {
@@ -1935,7 +2076,7 @@ function showSummary() {
 
     html += '<div class="summary-stats">';
     html += '<div class="summary-stat-card"><div class="summary-stat-label">最初の着手</div><div class="summary-stat-value">' + firstStartTime + '</div></div>';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">午前中に着手</div><div class="summary-stat-value" style="color:' + (inMorning ? '#4fc3f7' : '#999') + '">' + (inMorning ? '✓ できた' : '—') + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">午前中に着手</div><div class="summary-stat-value ' + (inMorning ? 'summary-stat-success' : 'summary-stat-muted') + '">' + (inMorning ? '✓ できた' : '—') + '</div></div>';
     html += '<div class="summary-stat-card"><div class="summary-stat-label">最長連続</div><div class="summary-stat-value">' + formatDuration(longestSeconds) + '</div></div>';
     html += '<div class="summary-stat-card"><div class="summary-stat-label">着手回数</div><div class="summary-stat-value">' + startCount + '回</div></div>';
     html += '</div>';
@@ -2035,11 +2176,14 @@ function showSettings() {
   lastFocusedElement = document.activeElement;
   document.getElementById('setting-milestone').checked = settings.milestoneEnabled;
   document.getElementById('setting-sound').checked = settings.soundEnabled;
+  const checkedThemeRadio = document.querySelector(`input[name="setting-theme"][value="${settings.themeMode}"]`);
+  if (checkedThemeRadio) checkedThemeRadio.checked = true;
 
   const settingsModal = document.getElementById('settings-modal');
   settingsModal.classList.add('active');
   currentTrapCleanup = trapFocus(settingsModal);
-  document.getElementById('setting-milestone').focus();
+  const firstThemeRadio = document.querySelector('input[name="setting-theme"]:checked') || document.getElementById('setting-milestone');
+  firstThemeRadio.focus();
 }
 
 function handleSaveSettings() {
@@ -2049,7 +2193,9 @@ function handleSaveSettings() {
   }
   settings.milestoneEnabled = document.getElementById('setting-milestone').checked;
   settings.soundEnabled = document.getElementById('setting-sound').checked;
+  settings.themeMode = document.querySelector('input[name="setting-theme"]:checked')?.value || 'system';
   saveSettings(settings);
+  applyTheme(settings.themeMode);
   document.getElementById('settings-modal').classList.remove('active');
 
   if (lastFocusedElement && lastFocusedElement.isConnected) {
@@ -2190,6 +2336,7 @@ function initApp() {
   appInitialized = true;
 
   settings = loadSettings();
+  applyTheme(settings.themeMode);
   tasks = loadTasks();
   renderMainScreen();
 
@@ -2211,6 +2358,11 @@ function initApp() {
   document.getElementById('btn-export-csv').addEventListener('click', exportLogsAsCSV);
   document.getElementById('undo-toast-btn').addEventListener('click', undoRemoveTask);
   document.addEventListener('keydown', handleGlobalKeydown);
+  systemThemeMedia.addEventListener('change', () => {
+    if (settings.themeMode === 'system') {
+      applyTheme('system');
+    }
+  });
 
   checkActiveState();
 }

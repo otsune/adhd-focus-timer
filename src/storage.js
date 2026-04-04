@@ -62,13 +62,16 @@ export function saveTasks(tasks) {
  * 設定をlocalStorageから読み込んで返す
  */
 export function loadSettings() {
-  const defaults = { milestoneEnabled: true, soundEnabled: true };
+  const defaults = { milestoneEnabled: true, soundEnabled: true, themeMode: 'system' };
   const saved = localStorage.getItem(STORAGE_KEYS.settings);
   if (saved) {
     try {
       const s = JSON.parse(saved);
       if (typeof s.milestoneEnabled === 'boolean') defaults.milestoneEnabled = s.milestoneEnabled;
       if (typeof s.soundEnabled === 'boolean') defaults.soundEnabled = s.soundEnabled;
+      if (s.themeMode === 'system' || s.themeMode === 'light' || s.themeMode === 'dark') {
+        defaults.themeMode = s.themeMode;
+      }
     } catch (e) { }
   }
   return defaults;
