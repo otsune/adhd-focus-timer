@@ -1098,6 +1098,28 @@
                 width: 100%;
             }
         }
+        /* ============== v2: Accumulated Time Display ============== */
+        #focus-accumulated-display,
+        #main-accumulated-display {
+            font-size: 28px;
+            color: var(--fg-muted);
+            margin-top: 18px;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+        }
+
+        #focus-accumulated-display .acc-label,
+        #main-accumulated-display .acc-label {
+            color: var(--border-strong);
+            font-size: 22px;
+            margin-right: 8px;
+        }
+
+        #focus-accumulated-display .acc-value,
+        #main-accumulated-display .acc-value {
+            color: var(--accent-strong);
+        }
+
         /* ============== v2: Away / Meal Buttons ============== */
         .btn-away, .btn-meal {
             background: var(--border-strong);
@@ -1121,6 +1143,42 @@
         }
 
         /* ============== v2: Recovery Mode ============== */
+        #recovery-header {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            align-items: baseline;
+            width: 100%;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .rh-label {
+            font-size: 20px;
+            color: var(--border-strong);
+            margin-right: 12px;
+        }
+
+        .rh-value {
+            font-size: 44px;
+            font-variant-numeric: tabular-nums;
+            color: var(--fg-muted);
+        }
+
+        .rh-value.acc {
+            color: var(--accent-strong);
+        }
+
+        #pause-elapsed-value.over5 {
+            color: var(--danger);
+            animation: pulse5min 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse5min {
+            from { opacity: 1; }
+            to { opacity: 0.4; }
+        }
+
         #recovery-section {
             width: 100%;
             max-width: 900px;
@@ -1214,6 +1272,24 @@
             .btn-finish-recovery { font-size: 22px; padding: 15px 30px; }
             #recovery-status-banner { font-size: 18px; padding: 12px 15px; }
             .btn-away, .btn-meal { padding: 18px 30px; font-size: 24px; }
+            #focus-accumulated-display,
+            #main-accumulated-display {
+                font-size: 22px;
+            }
+            #focus-accumulated-display .acc-label,
+            #main-accumulated-display .acc-label {
+                font-size: 17px;
+            }
+            #recovery-header {
+                gap: 12px;
+            }
+            .rh-label {
+                font-size: 16px;
+                margin-right: 8px;
+            }
+            .rh-value {
+                font-size: 28px;
+            }
         }
 
         /* ============== Accessibility ============== */
@@ -1278,9 +1354,22 @@
                 <button class="btn-secondary" id="btn-show-settings">⚙️ 設定</button>
             </div>
             <button class="btn-roulette" id="btn-roulette">決められない時（開始）</button>
+            <div id="main-accumulated-display">
+                <span class="acc-label">今日の累積集中</span><span class="acc-value" id="main-acc-value-display">—</span>
+            </div>
         </div>
         <!-- 復帰モード -->
         <div id="recovery-section" style="display:none">
+            <div id="recovery-header">
+                <div id="recovery-pause-elapsed">
+                    <span class="rh-label">中断中</span>
+                    <span class="rh-value" id="pause-elapsed-value">00:00</span>
+                </div>
+                <div id="recovery-today-acc">
+                    <span class="rh-label">今日の集中</span>
+                    <span class="rh-value acc" id="recovery-acc-value">—</span>
+                </div>
+            </div>
             <div id="recovery-status-banner" aria-live="polite"></div>
             <div id="recovery-resume-area"></div>
             <div id="recovery-tasks-area"></div>
@@ -1293,6 +1382,9 @@
     <div id="focus-screen" class="screen">
         <div id="focus-task-display">タスク名</div>
         <div id="focus-timer-display" tabindex="-1" role="timer" aria-label="集中時間">00:00</div>
+        <div id="focus-accumulated-display">
+            <span class="acc-label">今日の累積集中</span><span class="acc-value" id="focus-acc-value-display">—</span>
+        </div>
         <div class="focus-buttons">
             <button class="btn-away" id="btn-away" aria-label="一時中断: 離席">離席</button>
             <button class="btn-meal" id="btn-meal" aria-label="一時中断: 食事">食事</button>

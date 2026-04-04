@@ -4,6 +4,7 @@ import {
   getLongestFocusSegment,
   getStartCount,
   getBestSession,
+  getTaskTimeRanking,
   getFirstStartTime,
   didStartInMorning,
 } from '../src/stats.js';
@@ -103,6 +104,36 @@ describe('getBestSession', () => {
       makeLog('タスクB', 10, 0, 1800),
     ];
     expect(getBestSession(logs)).toEqual({ task: 'タスクB', seconds: 1800 });
+  });
+});
+
+describe('getTaskTimeRanking', () => {
+  it('空配列 → 空配列', () => {
+    expect(getTaskTimeRanking([])).toEqual([]);
+  });
+
+  it('タスクごとに合算して降順で返す', () => {
+    const logs = [
+      makeLog('タスクA', 9, 0, 900),
+      makeLog('タスクB', 10, 0, 1800),
+      makeLog('タスクA', 14, 0, 2700),
+    ];
+
+    expect(getTaskTimeRanking(logs)).toEqual([
+      { task: 'タスクA', seconds: 3600 },
+      { task: 'タスクB', seconds: 1800 },
+    ]);
+  });
+
+  it('空の taskName は名称未設定タスクで集計する', () => {
+    const logs = [
+      makeLog('', 9, 0, 600),
+      makeLog('', 10, 0, 1200),
+    ];
+
+    expect(getTaskTimeRanking(logs)).toEqual([
+      { task: '名称未設定タスク', seconds: 1800 },
+    ]);
   });
 });
 

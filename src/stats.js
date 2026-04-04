@@ -30,6 +30,22 @@ export function getBestSession(todayLogs) {
 }
 
 /**
+ * タスク別の累積集中時間ランキングを返す
+ */
+export function getTaskTimeRanking(todayLogs) {
+  const totals = new Map();
+
+  for (const log of todayLogs) {
+    const taskName = log.taskName || '名称未設定タスク';
+    totals.set(taskName, (totals.get(taskName) || 0) + log.seconds);
+  }
+
+  return Array.from(totals.entries())
+    .map(([task, seconds]) => ({ task, seconds }))
+    .sort((a, b) => b.seconds - a.seconds);
+}
+
+/**
  * 最初の着手時刻を "HH:MM" 形式で返す
  */
 export function getFirstStartTime(todayLogs) {

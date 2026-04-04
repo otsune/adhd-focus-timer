@@ -22,7 +22,7 @@ const MODULE_ORDER = [
   'src/app.js',
 ];
 
-const INPUT_HTML = 'index.html';
+const INPUT_HTML = 'public_html/index.html';
 const OUTPUT_DIR = 'dist';
 const OUTPUT_HTML = 'dist/index.html';
 

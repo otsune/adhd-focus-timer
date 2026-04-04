@@ -17,6 +17,7 @@ import {
   getLongestFocusSegment,
   getStartCount,
   getBestSession,
+  getTaskTimeRanking,
   getFirstStartTime,
   didStartInMorning,
 } from './stats.js';
@@ -28,6 +29,7 @@ let tasks = [''];
 let currentTaskName = '';
 let focusSegmentStartedAt = null;
 let focusIntervalId = null;
+let pauseIntervalId = null;
 let rouletteIntervalId = null;
 let lastNotifiedMilestone = 0;
 let appInitialized = false;
@@ -95,6 +97,30 @@ function playBeep(type) {
     osc.start(audioCtx.currentTime);
     osc.stop(audioCtx.currentTime + 0.5);
   }
+}
+
+function updateMainAccumulatedDisplay() {
+  const el = document.getElementById('main-acc-value-display');
+  if (!el) return;
+
+  const totalSeconds = getTotalFocusTime(getTodayLogs());
+  el.innerText = totalSeconds > 0 ? formatDuration(totalSeconds) : '—';
+}
+
+function updateFocusAccumulatedDisplay(currentElapsed = 0) {
+  const el = document.getElementById('focus-acc-value-display');
+  if (!el) return;
+
+  const totalSeconds = getTotalFocusTime(getTodayLogs()) + currentElapsed;
+  el.innerText = totalSeconds > 0 ? formatDuration(totalSeconds) : '—';
+}
+
+function updateRecoveryAccumulatedDisplay() {
+  const el = document.getElementById('recovery-acc-value');
+  if (!el) return;
+
+  const totalSeconds = getTotalFocusTime(getTodayLogs());
+  el.innerText = totalSeconds > 0 ? formatDuration(totalSeconds) : '—';
 }
 
 function addTask() {
@@ -267,6 +293,7 @@ function startFocus(taskName) {
 
   document.getElementById('focus-task-display').innerText = currentTaskName;
   document.getElementById('focus-timer-display').innerText = '00:00';
+  updateFocusAccumulatedDisplay(0);
   switchScreen('focus-screen');
 
   if (wasRecovery) {
@@ -295,6 +322,7 @@ function tickFocusTimer() {
 
   const elapsed = Math.floor((now - focusSegmentStartedAt) / 1000);
   document.getElementById('focus-timer-display').innerText = formatElapsedTime(elapsed);
+  updateFocusAccumulatedDisplay(elapsed);
   if (settings.milestoneEnabled) handleFocusMilestone(elapsed);
 }
 
@@ -336,6 +364,7 @@ function renderMainScreen() {
     normalSection.style.display = '';
     recoverySection.style.display = 'none';
     renderTaskSlots();
+    updateMainAccumulatedDisplay();
   }
 }
 
@@ -382,6 +411,9 @@ function renderRecoverySection() {
     initAudio();
     startRoulette();
   };
+
+  updateRecoveryAccumulatedDisplay();
+  startPauseTimer();
 }
 
 function exitRecovery() {
@@ -389,8 +421,46 @@ function exitRecovery() {
   lastTaskName = '';
   lastPauseType = '';
   pausedAt = null;
+  stopPauseTimer();
   clearActiveState();
   showSummary();
+}
+
+function startPauseTimer() {
+  stopPauseTimer();
+  tickPauseTimer();
+  pauseIntervalId = setInterval(tickPauseTimer, 1000);
+}
+
+function tickPauseTimer() {
+  if (!pausedAt) return;
+
+  const elapsed = Math.floor((Date.now() - pausedAt) / 1000);
+  const el = document.getElementById('pause-elapsed-value');
+  if (!el) return;
+
+  el.innerText = formatElapsedTime(elapsed);
+  if (elapsed >= 300) {
+    if (!el.classList.contains('over5')) {
+      el.classList.add('over5');
+      flashScreen();
+    }
+  } else {
+    el.classList.remove('over5');
+  }
+}
+
+function stopPauseTimer() {
+  if (pauseIntervalId) {
+    clearInterval(pauseIntervalId);
+    pauseIntervalId = null;
+  }
+
+  const el = document.getElementById('pause-elapsed-value');
+  if (el) {
+    el.classList.remove('over5');
+    el.innerText = '00:00';
+  }
 }
 
 function handleFocusMilestone(elapsedSeconds) {
@@ -441,6 +511,7 @@ function showSummary() {
     const longestSeconds = getLongestFocusSegment(todayLogs);
     const startCount = getStartCount(todayLogs);
     const bestSession = getBestSession(todayLogs);
+    const taskRanking = getTaskTimeRanking(todayLogs);
     const firstStartTime = getFirstStartTime(todayLogs);
     const inMorning = didStartInMorning(todayLogs);
 
@@ -464,6 +535,21 @@ function showSummary() {
       html += '<span class="task-name">' + escapeHtml(bestSession.task) + '</span> ';
       html += formatDuration(bestSession.seconds);
       html += '</div></div>';
+    }
+
+    if (taskRanking.length > 0) {
+      html += '<div class="summary-section">';
+      html += '<div class="summary-section-title">タスク別 累積集中時間</div>';
+      taskRanking.forEach((item, index) => {
+        const medals = ['🥇', '🥈', '🥉'];
+        const position = index < medals.length ? medals[index] : String(index + 1) + '.';
+        html += '<div class="ranking-row">';
+        html += '<span class="ranking-position">' + position + '</span>';
+        html += '<span class="ranking-task">' + escapeHtml(item.task) + '</span>';
+        html += '<span class="ranking-time">' + formatDuration(item.seconds) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
     }
 
     container.innerHTML = html;
@@ -621,6 +707,7 @@ function checkActiveState() {
       const elapsedSeconds = Math.floor((Date.now() - focusSegmentStartedAt) / 1000);
       lastNotifiedMilestone = Math.floor(elapsedSeconds / MILESTONE_INTERVAL) * MILESTONE_INTERVAL;
       document.getElementById('focus-task-display').innerText = currentTaskName;
+      updateFocusAccumulatedDisplay(elapsedSeconds);
       switchScreen('focus-screen');
       clearAllIntervals();
       focusIntervalId = setInterval(tickFocusTimer, 1000);
@@ -647,6 +734,7 @@ function clearAllIntervals() {
     clearInterval(focusIntervalId);
     focusIntervalId = null;
   }
+  stopPauseTimer();
   if (rouletteIntervalId) {
     clearInterval(rouletteIntervalId);
     rouletteIntervalId = null;

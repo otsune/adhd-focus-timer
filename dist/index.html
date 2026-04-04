@@ -1098,6 +1098,28 @@
                 width: 100%;
             }
         }
+        /* ============== v2: Accumulated Time Display ============== */
+        #focus-accumulated-display,
+        #main-accumulated-display {
+            font-size: 28px;
+            color: var(--fg-muted);
+            margin-top: 18px;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+        }
+
+        #focus-accumulated-display .acc-label,
+        #main-accumulated-display .acc-label {
+            color: var(--border-strong);
+            font-size: 22px;
+            margin-right: 8px;
+        }
+
+        #focus-accumulated-display .acc-value,
+        #main-accumulated-display .acc-value {
+            color: var(--accent-strong);
+        }
+
         /* ============== v2: Away / Meal Buttons ============== */
         .btn-away, .btn-meal {
             background: var(--border-strong);
@@ -1121,6 +1143,42 @@
         }
 
         /* ============== v2: Recovery Mode ============== */
+        #recovery-header {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            align-items: baseline;
+            width: 100%;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .rh-label {
+            font-size: 20px;
+            color: var(--border-strong);
+            margin-right: 12px;
+        }
+
+        .rh-value {
+            font-size: 44px;
+            font-variant-numeric: tabular-nums;
+            color: var(--fg-muted);
+        }
+
+        .rh-value.acc {
+            color: var(--accent-strong);
+        }
+
+        #pause-elapsed-value.over5 {
+            color: var(--danger);
+            animation: pulse5min 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse5min {
+            from { opacity: 1; }
+            to { opacity: 0.4; }
+        }
+
         #recovery-section {
             width: 100%;
             max-width: 900px;
@@ -1214,6 +1272,24 @@
             .btn-finish-recovery { font-size: 22px; padding: 15px 30px; }
             #recovery-status-banner { font-size: 18px; padding: 12px 15px; }
             .btn-away, .btn-meal { padding: 18px 30px; font-size: 24px; }
+            #focus-accumulated-display,
+            #main-accumulated-display {
+                font-size: 22px;
+            }
+            #focus-accumulated-display .acc-label,
+            #main-accumulated-display .acc-label {
+                font-size: 17px;
+            }
+            #recovery-header {
+                gap: 12px;
+            }
+            .rh-label {
+                font-size: 16px;
+                margin-right: 8px;
+            }
+            .rh-value {
+                font-size: 28px;
+            }
         }
 
         /* ============== Accessibility ============== */
@@ -1278,9 +1354,22 @@
                 <button class="btn-secondary" id="btn-show-settings">⚙️ 設定</button>
             </div>
             <button class="btn-roulette" id="btn-roulette">決められない時（開始）</button>
+            <div id="main-accumulated-display">
+                <span class="acc-label">今日の累積集中</span><span class="acc-value" id="main-acc-value-display">—</span>
+            </div>
         </div>
         <!-- 復帰モード -->
         <div id="recovery-section" style="display:none">
+            <div id="recovery-header">
+                <div id="recovery-pause-elapsed">
+                    <span class="rh-label">中断中</span>
+                    <span class="rh-value" id="pause-elapsed-value">00:00</span>
+                </div>
+                <div id="recovery-today-acc">
+                    <span class="rh-label">今日の集中</span>
+                    <span class="rh-value acc" id="recovery-acc-value">—</span>
+                </div>
+            </div>
             <div id="recovery-status-banner" aria-live="polite"></div>
             <div id="recovery-resume-area"></div>
             <div id="recovery-tasks-area"></div>
@@ -1293,6 +1382,9 @@
     <div id="focus-screen" class="screen">
         <div id="focus-task-display">タスク名</div>
         <div id="focus-timer-display" tabindex="-1" role="timer" aria-label="集中時間">00:00</div>
+        <div id="focus-accumulated-display">
+            <span class="acc-label">今日の累積集中</span><span class="acc-value" id="focus-acc-value-display">—</span>
+        </div>
         <div class="focus-buttons">
             <button class="btn-away" id="btn-away" aria-label="一時中断: 離席">離席</button>
             <button class="btn-meal" id="btn-meal" aria-label="一時中断: 食事">食事</button>
@@ -1467,6 +1559,22 @@ function getBestSession(todayLogs) {
   if (todayLogs.length === 0) return null;
   const best = todayLogs.reduce((a, b) => a.seconds > b.seconds ? a : b);
   return { task: best.taskName, seconds: best.seconds };
+}
+
+/**
+ * タスク別の累積集中時間ランキングを返す
+ */
+function getTaskTimeRanking(todayLogs) {
+  const totals = new Map();
+
+  for (const log of todayLogs) {
+    const taskName = log.taskName || '名称未設定タスク';
+    totals.set(taskName, (totals.get(taskName) || 0) + log.seconds);
+  }
+
+  return Array.from(totals.entries())
+    .map(([task, seconds]) => ({ task, seconds }))
+    .sort((a, b) => b.seconds - a.seconds);
 }
 
 /**
@@ -1652,6 +1760,7 @@ let tasks = [''];
 let currentTaskName = '';
 let focusSegmentStartedAt = null;
 let focusIntervalId = null;
+let pauseIntervalId = null;
 let rouletteIntervalId = null;
 let lastNotifiedMilestone = 0;
 let appInitialized = false;
@@ -1719,6 +1828,30 @@ function playBeep(type) {
     osc.start(audioCtx.currentTime);
     osc.stop(audioCtx.currentTime + 0.5);
   }
+}
+
+function updateMainAccumulatedDisplay() {
+  const el = document.getElementById('main-acc-value-display');
+  if (!el) return;
+
+  const totalSeconds = getTotalFocusTime(getTodayLogs());
+  el.innerText = totalSeconds > 0 ? formatDuration(totalSeconds) : '—';
+}
+
+function updateFocusAccumulatedDisplay(currentElapsed = 0) {
+  const el = document.getElementById('focus-acc-value-display');
+  if (!el) return;
+
+  const totalSeconds = getTotalFocusTime(getTodayLogs()) + currentElapsed;
+  el.innerText = totalSeconds > 0 ? formatDuration(totalSeconds) : '—';
+}
+
+function updateRecoveryAccumulatedDisplay() {
+  const el = document.getElementById('recovery-acc-value');
+  if (!el) return;
+
+  const totalSeconds = getTotalFocusTime(getTodayLogs());
+  el.innerText = totalSeconds > 0 ? formatDuration(totalSeconds) : '—';
 }
 
 function addTask() {
@@ -1891,6 +2024,7 @@ function startFocus(taskName) {
 
   document.getElementById('focus-task-display').innerText = currentTaskName;
   document.getElementById('focus-timer-display').innerText = '00:00';
+  updateFocusAccumulatedDisplay(0);
   switchScreen('focus-screen');
 
   if (wasRecovery) {
@@ -1919,6 +2053,7 @@ function tickFocusTimer() {
 
   const elapsed = Math.floor((now - focusSegmentStartedAt) / 1000);
   document.getElementById('focus-timer-display').innerText = formatElapsedTime(elapsed);
+  updateFocusAccumulatedDisplay(elapsed);
   if (settings.milestoneEnabled) handleFocusMilestone(elapsed);
 }
 
@@ -1960,6 +2095,7 @@ function renderMainScreen() {
     normalSection.style.display = '';
     recoverySection.style.display = 'none';
     renderTaskSlots();
+    updateMainAccumulatedDisplay();
   }
 }
 
@@ -2006,6 +2142,9 @@ function renderRecoverySection() {
     initAudio();
     startRoulette();
   };
+
+  updateRecoveryAccumulatedDisplay();
+  startPauseTimer();
 }
 
 function exitRecovery() {
@@ -2013,8 +2152,46 @@ function exitRecovery() {
   lastTaskName = '';
   lastPauseType = '';
   pausedAt = null;
+  stopPauseTimer();
   clearActiveState();
   showSummary();
+}
+
+function startPauseTimer() {
+  stopPauseTimer();
+  tickPauseTimer();
+  pauseIntervalId = setInterval(tickPauseTimer, 1000);
+}
+
+function tickPauseTimer() {
+  if (!pausedAt) return;
+
+  const elapsed = Math.floor((Date.now() - pausedAt) / 1000);
+  const el = document.getElementById('pause-elapsed-value');
+  if (!el) return;
+
+  el.innerText = formatElapsedTime(elapsed);
+  if (elapsed >= 300) {
+    if (!el.classList.contains('over5')) {
+      el.classList.add('over5');
+      flashScreen();
+    }
+  } else {
+    el.classList.remove('over5');
+  }
+}
+
+function stopPauseTimer() {
+  if (pauseIntervalId) {
+    clearInterval(pauseIntervalId);
+    pauseIntervalId = null;
+  }
+
+  const el = document.getElementById('pause-elapsed-value');
+  if (el) {
+    el.classList.remove('over5');
+    el.innerText = '00:00';
+  }
 }
 
 function handleFocusMilestone(elapsedSeconds) {
@@ -2065,6 +2242,7 @@ function showSummary() {
     const longestSeconds = getLongestFocusSegment(todayLogs);
     const startCount = getStartCount(todayLogs);
     const bestSession = getBestSession(todayLogs);
+    const taskRanking = getTaskTimeRanking(todayLogs);
     const firstStartTime = getFirstStartTime(todayLogs);
     const inMorning = didStartInMorning(todayLogs);
 
@@ -2088,6 +2266,21 @@ function showSummary() {
       html += '<span class="task-name">' + escapeHtml(bestSession.task) + '</span> ';
       html += formatDuration(bestSession.seconds);
       html += '</div></div>';
+    }
+
+    if (taskRanking.length > 0) {
+      html += '<div class="summary-section">';
+      html += '<div class="summary-section-title">タスク別 累積集中時間</div>';
+      taskRanking.forEach((item, index) => {
+        const medals = ['🥇', '🥈', '🥉'];
+        const position = index < medals.length ? medals[index] : String(index + 1) + '.';
+        html += '<div class="ranking-row">';
+        html += '<span class="ranking-position">' + position + '</span>';
+        html += '<span class="ranking-task">' + escapeHtml(item.task) + '</span>';
+        html += '<span class="ranking-time">' + formatDuration(item.seconds) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
     }
 
     container.innerHTML = html;
@@ -2245,6 +2438,7 @@ function checkActiveState() {
       const elapsedSeconds = Math.floor((Date.now() - focusSegmentStartedAt) / 1000);
       lastNotifiedMilestone = Math.floor(elapsedSeconds / MILESTONE_INTERVAL) * MILESTONE_INTERVAL;
       document.getElementById('focus-task-display').innerText = currentTaskName;
+      updateFocusAccumulatedDisplay(elapsedSeconds);
       switchScreen('focus-screen');
       clearAllIntervals();
       focusIntervalId = setInterval(tickFocusTimer, 1000);
@@ -2271,6 +2465,7 @@ function clearAllIntervals() {
     clearInterval(focusIntervalId);
     focusIntervalId = null;
   }
+  stopPauseTimer();
   if (rouletteIntervalId) {
     clearInterval(rouletteIntervalId);
     rouletteIntervalId = null;
