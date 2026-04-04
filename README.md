@@ -1,6 +1,6 @@
 # ADHD Focus Timer
 
-**▶️ [今すぐWebブラウザで使う](https://tagkaz.github.io/adhd-focus-timer/)**（推奨）
+**▶️ [今すぐWebブラウザで使う](https://otsune.github.io/adhd-focus-timer/)**（推奨）
 
 ADHD特化型・強制着手タイマーの「集中継続特化・カウントアップ版」です。
 

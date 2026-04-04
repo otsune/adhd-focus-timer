@@ -1,0 +1,52 @@
+name: Update README GitHub Pages URL
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme-url:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Update README Pages URL for current repository owner
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          owner = "${{ github.repository_owner }}"
+          readme_path = Path("README.md")
+          content = readme_path.read_text(encoding="utf-8")
+          updated = re.sub(
+              r"https://[A-Za-z0-9-]+\.github\.io/adhd-focus-timer/",
+              f"https://{owner}.github.io/adhd-focus-timer/",
+              content,
+              count=1,
+          )
+
+          if updated != content:
+              readme_path.write_text(updated, encoding="utf-8")
+          PY
+
+      - name: Commit updated README if needed
+        run: |
+          if git diff --quiet -- README.md; then
+            echo "No README change needed"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore: sync README GitHub Pages URL"
+          git push
