@@ -81,33 +81,38 @@ describe('loadTasks / saveTasks', () => {
 
 describe('loadSettings / saveSettings', () => {
   it('未保存時はデフォルト設定を返す', () => {
-    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true, themeMode: 'system' });
+    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true, themeMode: 'system', language: 'ja' });
   });
 
   it('保存→読込の往復', () => {
-    const settings = { milestoneEnabled: false, soundEnabled: false, themeMode: 'dark' };
+    const settings = { milestoneEnabled: false, soundEnabled: false, themeMode: 'dark', language: 'en' };
     saveSettings(settings);
     expect(loadSettings()).toEqual(settings);
   });
 
   it('部分的設定は残りをデフォルトで補完', () => {
     localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ milestoneEnabled: false }));
-    expect(loadSettings()).toEqual({ milestoneEnabled: false, soundEnabled: true, themeMode: 'system' });
+    expect(loadSettings()).toEqual({ milestoneEnabled: false, soundEnabled: true, themeMode: 'system', language: 'ja' });
   });
 
   it('型が不正なフィールドはデフォルト維持', () => {
-    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ milestoneEnabled: 'yes', soundEnabled: 42, themeMode: 'blue' }));
-    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true, themeMode: 'system' });
+    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ milestoneEnabled: 'yes', soundEnabled: 42, themeMode: 'blue', language: 'fr' }));
+    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true, themeMode: 'system', language: 'ja' });
   });
 
   it('不正JSONはデフォルトに戻る', () => {
     localStorage.setItem(STORAGE_KEYS.settings, 'broken');
-    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true, themeMode: 'system' });
+    expect(loadSettings()).toEqual({ milestoneEnabled: true, soundEnabled: true, themeMode: 'system', language: 'ja' });
   });
 
   it('themeMode が light/dark/system のときだけ保持する', () => {
     localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ themeMode: 'light' }));
     expect(loadSettings().themeMode).toBe('light');
+  });
+
+  it('language が ja/en のときだけ保持する', () => {
+    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ language: 'en' }));
+    expect(loadSettings().language).toBe('en');
   });
 
   it('正しいキー settings_v2 を使用', () => {

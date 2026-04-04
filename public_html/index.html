@@ -1355,18 +1355,18 @@
             </div>
             <button class="btn-roulette" id="btn-roulette">決められない時（開始）</button>
             <div id="main-accumulated-display">
-                <span class="acc-label">今日の累積集中</span><span class="acc-value" id="main-acc-value-display">—</span>
+                <span class="acc-label" id="main-acc-label">今日の累積集中</span><span class="acc-value" id="main-acc-value-display">—</span>
             </div>
         </div>
         <!-- 復帰モード -->
         <div id="recovery-section" style="display:none">
             <div id="recovery-header">
                 <div id="recovery-pause-elapsed">
-                    <span class="rh-label">中断中</span>
+                    <span class="rh-label" id="recovery-pause-label">中断中</span>
                     <span class="rh-value" id="pause-elapsed-value">00:00</span>
                 </div>
                 <div id="recovery-today-acc">
-                    <span class="rh-label">今日の集中</span>
+                    <span class="rh-label" id="recovery-acc-label">今日の集中</span>
                     <span class="rh-value acc" id="recovery-acc-value">—</span>
                 </div>
             </div>
@@ -1383,7 +1383,7 @@
         <div id="focus-task-display">タスク名</div>
         <div id="focus-timer-display" tabindex="-1" role="timer" aria-label="集中時間">00:00</div>
         <div id="focus-accumulated-display">
-            <span class="acc-label">今日の累積集中</span><span class="acc-value" id="focus-acc-value-display">—</span>
+            <span class="acc-label" id="focus-acc-label">今日の累積集中</span><span class="acc-value" id="focus-acc-value-display">—</span>
         </div>
         <div class="focus-buttons">
             <button class="btn-away" id="btn-away" aria-label="一時中断: 離席">離席</button>
@@ -1410,31 +1410,44 @@
         <h2 id="settings-modal-title">⚙️ 設定</h2>
         <div class="settings-content">
             <div class="settings-row settings-row-stack">
-                <span class="settings-label">テーマ</span>
-                <div class="theme-mode-group" role="radiogroup" aria-label="テーマ">
+                <span class="settings-label" id="settings-theme-label">テーマ</span>
+                <div class="theme-mode-group" role="radiogroup" aria-label="テーマ" id="settings-theme-group">
                     <label class="theme-option">
                         <input type="radio" name="setting-theme" value="system" checked>
-                        <span class="theme-option-label">システム</span>
+                        <span class="theme-option-label" id="theme-option-system">システム</span>
                     </label>
                     <label class="theme-option">
                         <input type="radio" name="setting-theme" value="light">
-                        <span class="theme-option-label">ライト</span>
+                        <span class="theme-option-label" id="theme-option-light">ライト</span>
                     </label>
                     <label class="theme-option">
                         <input type="radio" name="setting-theme" value="dark">
-                        <span class="theme-option-label">ダーク</span>
+                        <span class="theme-option-label" id="theme-option-dark">ダーク</span>
+                    </label>
+                </div>
+            </div>
+            <div class="settings-row settings-row-stack">
+                <span class="settings-label" id="settings-language-label">言語</span>
+                <div class="theme-mode-group" role="radiogroup" aria-label="言語" id="settings-language-group">
+                    <label class="theme-option">
+                        <input type="radio" name="setting-language" value="ja" checked>
+                        <span class="theme-option-label" id="language-option-ja">日本語</span>
+                    </label>
+                    <label class="theme-option">
+                        <input type="radio" name="setting-language" value="en">
+                        <span class="theme-option-label" id="language-option-en">English</span>
                     </label>
                 </div>
             </div>
             <div class="settings-row">
-                <span class="settings-label">節目通知</span>
+                <span class="settings-label" id="settings-milestone-label">節目通知</span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="setting-milestone" checked aria-label="節目通知">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
             <div class="settings-row">
-                <span class="settings-label">音通知</span>
+                <span class="settings-label" id="settings-sound-label">音通知</span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="setting-sound" checked aria-label="音通知">
                     <span class="toggle-slider"></span>

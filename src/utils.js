@@ -13,20 +13,21 @@ export function formatElapsedTime(totalSeconds) {
 }
 
 /**
- * 秒数を日本語の継続時間表記でフォーマットする
+ * 秒数を継続時間表記でフォーマットする
  */
-export function formatDuration(totalSeconds) {
+export function formatDuration(totalSeconds, language = 'ja') {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
+  const isEnglish = language === 'en';
 
   if (h > 0 && m > 0) {
-    return h + '時間' + m + '分';
+    return isEnglish ? `${h} hr ${m} min` : h + '時間' + m + '分';
   } else if (h > 0) {
-    return h + '時間';
+    return isEnglish ? `${h} hr` : h + '時間';
   } else if (m > 0) {
-    return m + '分';
+    return isEnglish ? `${m} min` : m + '分';
   } else {
-    return '1分未満';
+    return isEnglish ? '<1 min' : '1分未満';
   }
 }
 

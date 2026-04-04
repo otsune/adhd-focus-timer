@@ -95,6 +95,14 @@ describe('formatDuration', () => {
   it('2時間59分 → "2時間59分"', () => {
     expect(formatDuration(10740)).toBe('2時間59分');
   });
+
+  it('English: 0秒 → "<1 min"', () => {
+    expect(formatDuration(0, 'en')).toBe('<1 min');
+  });
+
+  it('English: 1時間30分 → "1 hr 30 min"', () => {
+    expect(formatDuration(5400, 'en')).toBe('1 hr 30 min');
+  });
 });
 
 describe('escapeHtml', () => {

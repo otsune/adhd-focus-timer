@@ -62,7 +62,7 @@ export function saveTasks(tasks) {
  * 設定をlocalStorageから読み込んで返す
  */
 export function loadSettings() {
-  const defaults = { milestoneEnabled: true, soundEnabled: true, themeMode: 'system' };
+  const defaults = { milestoneEnabled: true, soundEnabled: true, themeMode: 'system', language: 'ja' };
   const saved = localStorage.getItem(STORAGE_KEYS.settings);
   if (saved) {
     try {
@@ -71,6 +71,9 @@ export function loadSettings() {
       if (typeof s.soundEnabled === 'boolean') defaults.soundEnabled = s.soundEnabled;
       if (s.themeMode === 'system' || s.themeMode === 'light' || s.themeMode === 'dark') {
         defaults.themeMode = s.themeMode;
+      }
+      if (s.language === 'ja' || s.language === 'en') {
+        defaults.language = s.language;
       }
     } catch (e) { }
   }
