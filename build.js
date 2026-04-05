@@ -20,6 +20,7 @@ const MODULE_ORDER = [
   'src/milestone.js',
   'src/storage.js', // date-utils.jsの後（依存あり）
   'src/todotxt.js',
+  'src/url-tasks.js',
   'src/app.js',
 ];
 

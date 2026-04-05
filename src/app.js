@@ -16,6 +16,7 @@ import {
   serializeTasksToTodoTxt,
   extractActiveTasksFromTodoTxt,
 } from './todotxt.js';
+import { applyTasksFromHash } from './url-tasks.js';
 import {
   getTotalFocusTime,
   getLongestFocusSegment,
@@ -1096,6 +1097,16 @@ export function initApp() {
   applyTheme(settings.themeMode);
   applyLanguage(settings.language);
   tasks = loadTasks();
+  const hashTasks = applyTasksFromHash(window.location.hash, tasks, MAX_TASKS);
+  if (hashTasks && hashTasks.applied) {
+    tasks = hashTasks.tasks;
+    saveTasks(tasks);
+    if (window.history?.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    } else {
+      window.location.hash = '';
+    }
+  }
   renderMainScreen();
 
   document.getElementById('btn-roulette').addEventListener('click', () => {
