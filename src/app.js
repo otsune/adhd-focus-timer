@@ -441,15 +441,9 @@ function renderTaskSlots() {
     addBtn.innerText = t('addTask');
   }
 
-  if (tasks.length === 1) {
-    container.style.gridTemplateColumns = '1fr';
-    container.style.maxWidth = '700px';
-    container.style.margin = '0 auto 20px auto';
-  } else {
-    container.style.gridTemplateColumns = '1fr 1fr';
-    container.style.maxWidth = '100%';
-    container.style.margin = '0 0 20px 0';
-  }
+  container.style.gridTemplateColumns = '1fr';
+  container.style.maxWidth = '860px';
+  container.style.margin = '0 auto 16px auto';
 
   for (let i = 0; i < tasks.length; i++) {
     const slot = document.createElement('div');
