@@ -343,85 +343,6 @@
             background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
         }
 
-        /* ============== Pause Screen ============== */
-        #pause-screen {
-            background-color: color-mix(in srgb, var(--bg) 94%, #000 6%);
-        }
-
-        #pause-title {
-            font-size: 6vw;
-            margin-bottom: 20px;
-            color: var(--fg-muted);
-        }
-
-        #pause-timer-display {
-            font-size: 15vw;
-            line-height: 1;
-            font-variant-numeric: tabular-nums;
-            user-select: none;
-            color: var(--border-strong);
-        }
-
-        .pause-buttons {
-            display: flex;
-            gap: 30px;
-            margin-top: 60px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .btn-resume {
-            background: var(--success);
-            color: #fff;
-            border: none;
-            padding: 25px 60px;
-            font-size: 40px;
-            font-weight: bold;
-            border-radius: 16px;
-            cursor: pointer;
-            box-shadow: 0 8px 0 var(--success-shadow);
-            transition: 0.1s;
-        }
-
-        .btn-resume:active {
-            transform: translateY(8px);
-            box-shadow: 0 0 0 var(--success-shadow);
-        }
-
-        .btn-pause-finish {
-            background: var(--border);
-            color: var(--fg);
-            border: none;
-            padding: 25px 60px;
-            font-size: 40px;
-            font-weight: bold;
-            border-radius: 16px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-pause-finish:hover {
-            background: var(--border-strong);
-        }
-
-        .btn-return-main {
-            background: transparent;
-            color: var(--fg-muted);
-            border: 2px solid var(--border-strong);
-            padding: 20px 40px;
-            font-size: 30px;
-            font-weight: bold;
-            border-radius: 14px;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-top: 20px;
-        }
-
-        .btn-return-main:hover {
-            color: var(--fg);
-            border-color: var(--fg-soft);
-        }
-
         /* ============== Summary Modal ============== */
         #summary-modal {
             position: fixed;
@@ -998,15 +919,14 @@
                 grid-template-columns: 1fr;
             }
             
-            /* Focus / Pause Screen */
-            #focus-timer-display,
-            #pause-timer-display {
+            /* Focus Screen */
+            #focus-timer-display {
                 font-size: 28vw;
             }
-            #focus-task-display, #pause-title {
+            #focus-task-display {
                 font-size: 9vw;
             }
-            .focus-buttons, .pause-buttons {
+            .focus-buttons {
                 display: flex;
                 flex-direction: column;
                 gap: 15px;
@@ -1014,15 +934,10 @@
                 max-width: 350px;
                 margin: 0 auto;
             }
-            .focus-buttons button, .pause-buttons button {
+            .focus-buttons button {
                 width: 100%;
                 font-size: 24px;
                 padding: 18px;
-            }
-            .btn-return-main {
-                width: 90%;
-                max-width: 350px;
-                font-size: 20px;
             }
 
             /* Milestones Toast */

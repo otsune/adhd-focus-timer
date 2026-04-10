@@ -28,7 +28,7 @@ export async function run() {
 
   // 開始ボタンをクリック
   browser.evaluate("document.querySelector('.btn-start-direct').click()");
-  browser.wait(500);
+  await browser.wait(500);
 
   // 集中画面に遷移することを確認
   const focusScreenVisible = browser.isVisible('#focus-screen');
@@ -46,7 +46,7 @@ export async function run() {
   browser.screenshot('03-timer-focus-started');
 
   // 2秒待機後、タイマーが更新されていることを確認
-  browser.wait(2500);
+  await browser.wait(2500);
 
   timerText = browser.getText('#focus-timer-display');
   test.assert(timerText !== initialTimerText, 'タイマーがカウントアップする');
@@ -56,14 +56,14 @@ export async function run() {
 
   // 終了ボタンをクリック
   browser.evaluate("document.querySelector('#btn-finish-focus').click()");
-  browser.wait(300);
+  await browser.wait(300);
 
   // サマリーモーダルが表示されることを確認
   const summaryModalVisible = browser.isVisible('#summary-modal');
   test.assert(summaryModalVisible, 'サマリーモーダルが表示される');
 
   // ログに記録されていることを確認
-  browser.wait(1000);
+  await browser.wait(1000);
   const logs = browser.getStorage('logs_v2');
   test.assert(logs.includes('集中テストタスク'), '集中時間がログに記録される');
 
@@ -92,8 +92,8 @@ export async function run() {
   browser.evaluate("document.querySelector('#btn-roulette').click()");
 
   // ルーレット演出後、集中画面に遷移することを確認（約2秒待機）
-  browser.wait(2500);
-  browser.wait(300);
+  await browser.wait(2500);
+  await browser.wait(300);
 
   const focusAfterRoulette = browser.isVisible('#focus-screen');
   test.assert(focusAfterRoulette, 'ルーレット後に集中画面に遷移');

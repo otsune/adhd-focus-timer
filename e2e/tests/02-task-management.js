@@ -97,7 +97,7 @@ export async function run() {
 
   // アンドゥボタンをクリック
   browser.evaluate("document.querySelector('#undo-toast-btn').click()");
-  browser.wait(300);
+  await browser.wait(300);
 
   taskCount = browser.countElements('.task-slot');
   test.assertEqual(taskCount, 2, 'アンドゥ後: タスクが復元される');

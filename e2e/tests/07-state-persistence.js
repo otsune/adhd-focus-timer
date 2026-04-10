@@ -27,7 +27,7 @@ export async function run() {
   browser.evaluate("document.querySelector('.btn-start-direct').click()");
 
   // 少し待機
-  browser.wait(1500);
+  await browser.wait(1500);
 
   // 集中中であることを確認
   const focusScreenVisible = browser.isVisible('#focus-screen');
@@ -46,7 +46,7 @@ export async function run() {
   // 再開ボタンをクリック
   if (recoveryBannerVisible) {
     browser.evaluate("document.querySelector('.btn-recovery-resume').click()");
-    browser.wait(300);
+    await browser.wait(300);
   }
 
   // 集中画面に戻ることを確認
@@ -72,7 +72,7 @@ export async function run() {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   `);
   browser.evaluate("document.querySelector('.btn-start-direct').click()");
-  browser.wait(500);
+  await browser.wait(500);
 
   // 離席して復帰モードに入る
   browser.evaluate("document.querySelector('#btn-away').click()");
@@ -107,7 +107,7 @@ export async function run() {
 
   // 破棄ボタンをクリック
   browser.evaluate("document.querySelector('.btn-recovery-discard').click()");
-  browser.wait(500);
+  await browser.wait(500);
 
   // メイン画面に戻ることを確認
   const mainScreenVisible = browser.isVisible('#main-screen');

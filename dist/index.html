@@ -106,18 +106,19 @@
 
         /* ============== Main Screen ============== */
         #main-screen {
-            max-width: 1400px;
+            width: min(100%, 980px);
             margin: 0 auto;
             justify-content: flex-start;
-            padding-top: 5vh;
+            padding-top: 2vh;
         }
 
         .grid-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
+            grid-template-columns: 1fr;
+            gap: 12px;
             width: 100%;
-            margin-bottom: 20px;
+            max-width: 860px;
+            margin: 0 auto 16px auto;
         }
 
         .task-slot {
@@ -125,7 +126,7 @@
             align-items: center;
             gap: 10px;
             background: var(--bg-strong);
-            padding: 15px 25px;
+            padding: 10px 16px;
             border-radius: 16px;
             transition: transform 0.2s;
             position: relative;
@@ -141,7 +142,7 @@
             background: transparent;
             border: none;
             color: var(--fg);
-            font-size: 36px;
+            font-size: clamp(24px, 2.1vw, 32px);
             font-weight: bold;
             outline: none;
             min-width: 0;
@@ -149,16 +150,16 @@
 
         .task-slot input::placeholder {
             color: var(--fg-muted);
-            font-size: 30px;
+            font-size: clamp(20px, 1.8vw, 26px);
         }
 
         .btn-remove {
             background: transparent;
             color: var(--fg-muted);
             border: none;
-            font-size: 40px;
+            font-size: 32px;
             cursor: pointer;
-            padding: 0 10px;
+            padding: 0 6px;
             transition: 0.2s;
         }
 
@@ -171,8 +172,8 @@
             background: var(--border-strong);
             color: var(--fg);
             border: none;
-            padding: 15px 30px;
-            font-size: 28px;
+            padding: 12px 20px;
+            font-size: clamp(20px, 1.7vw, 24px);
             font-weight: bold;
             border-radius: 10px;
             cursor: pointer;
@@ -187,8 +188,8 @@
         .controls-row {
             display: flex;
             justify-content: center;
-            gap: 20px;
-            margin-bottom: 40px;
+            gap: 14px;
+            margin-bottom: 18px;
             flex-wrap: wrap;
         }
 
@@ -196,8 +197,8 @@
             background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
             color: var(--fg);
             border: 2px dashed var(--border-strong);
-            padding: 15px 40px;
-            font-size: 24px;
+            padding: 12px 24px;
+            font-size: 20px;
             font-weight: bold;
             border-radius: 12px;
             cursor: pointer;
@@ -220,22 +221,22 @@
             background: var(--danger);
             color: var(--accent-contrast);
             border: none;
-            padding: 50px 80px;
-            font-size: 80px;
+            padding: 18px 40px;
+            font-size: clamp(34px, 4vw, 48px);
             font-weight: bold;
             border-radius: 30px;
             cursor: pointer;
-            box-shadow: 0 15px 0 var(--danger-shadow);
+            box-shadow: 0 10px 0 var(--danger-shadow);
             transition: 0.1s;
             width: 100%;
             text-align: center;
-            letter-spacing: 5px;
+            letter-spacing: 2px;
             margin-top: auto;
-            margin-bottom: 5vh;
+            margin-bottom: 2vh;
         }
 
         .btn-roulette:active {
-            transform: translateY(15px);
+            transform: translateY(10px);
             box-shadow: 0 0 0 var(--danger-shadow);
         }
 
@@ -340,85 +341,6 @@
             color: var(--fg);
             border-color: var(--fg-soft);
             background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
-        }
-
-        /* ============== Pause Screen ============== */
-        #pause-screen {
-            background-color: color-mix(in srgb, var(--bg) 94%, #000 6%);
-        }
-
-        #pause-title {
-            font-size: 6vw;
-            margin-bottom: 20px;
-            color: var(--fg-muted);
-        }
-
-        #pause-timer-display {
-            font-size: 15vw;
-            line-height: 1;
-            font-variant-numeric: tabular-nums;
-            user-select: none;
-            color: var(--border-strong);
-        }
-
-        .pause-buttons {
-            display: flex;
-            gap: 30px;
-            margin-top: 60px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .btn-resume {
-            background: var(--success);
-            color: #fff;
-            border: none;
-            padding: 25px 60px;
-            font-size: 40px;
-            font-weight: bold;
-            border-radius: 16px;
-            cursor: pointer;
-            box-shadow: 0 8px 0 var(--success-shadow);
-            transition: 0.1s;
-        }
-
-        .btn-resume:active {
-            transform: translateY(8px);
-            box-shadow: 0 0 0 var(--success-shadow);
-        }
-
-        .btn-pause-finish {
-            background: var(--border);
-            color: var(--fg);
-            border: none;
-            padding: 25px 60px;
-            font-size: 40px;
-            font-weight: bold;
-            border-radius: 16px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-pause-finish:hover {
-            background: var(--border-strong);
-        }
-
-        .btn-return-main {
-            background: transparent;
-            color: var(--fg-muted);
-            border: 2px solid var(--border-strong);
-            padding: 20px 40px;
-            font-size: 30px;
-            font-weight: bold;
-            border-radius: 14px;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-top: 20px;
-        }
-
-        .btn-return-main:hover {
-            color: var(--fg);
-            border-color: var(--fg-soft);
         }
 
         /* ============== Summary Modal ============== */
@@ -997,15 +919,14 @@
                 grid-template-columns: 1fr;
             }
             
-            /* Focus / Pause Screen */
-            #focus-timer-display,
-            #pause-timer-display {
+            /* Focus Screen */
+            #focus-timer-display {
                 font-size: 28vw;
             }
-            #focus-task-display, #pause-title {
+            #focus-task-display {
                 font-size: 9vw;
             }
-            .focus-buttons, .pause-buttons {
+            .focus-buttons {
                 display: flex;
                 flex-direction: column;
                 gap: 15px;
@@ -1013,15 +934,10 @@
                 max-width: 350px;
                 margin: 0 auto;
             }
-            .focus-buttons button, .pause-buttons button {
+            .focus-buttons button {
                 width: 100%;
                 font-size: 24px;
                 padding: 18px;
-            }
-            .btn-return-main {
-                width: 90%;
-                max-width: 350px;
-                font-size: 20px;
             }
 
             /* Milestones Toast */
@@ -1101,9 +1017,9 @@
         /* ============== v2: Accumulated Time Display ============== */
         #focus-accumulated-display,
         #main-accumulated-display {
-            font-size: 28px;
+            font-size: 22px;
             color: var(--fg-muted);
-            margin-top: 18px;
+            margin-top: 10px;
             font-variant-numeric: tabular-nums;
             letter-spacing: 1px;
         }
@@ -1111,7 +1027,7 @@
         #focus-accumulated-display .acc-label,
         #main-accumulated-display .acc-label {
             color: var(--border-strong);
-            font-size: 22px;
+            font-size: 18px;
             margin-right: 8px;
         }
 
@@ -2065,6 +1981,10 @@ let settings = {
 let audioCtx;
 const systemThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
 
+// 累積集中時間のキャッシュ（tickFocusTimer での毎秒計算を削減）
+let cachedTodayFocusTime = -1;
+let cachedTodayKey = '';
+
 function t(key, vars = {}) {
   const lang = TRANSLATIONS[settings.language] ? settings.language : 'ja';
   const template = TRANSLATIONS[lang][key] ?? TRANSLATIONS.ja[key] ?? key;
@@ -2220,7 +2140,7 @@ function updateMainAccumulatedDisplay() {
   const el = document.getElementById('main-acc-value-display');
   if (!el) return;
 
-  const totalSeconds = getTotalFocusTime(getTodayLogs());
+  const totalSeconds = getCachedTodayFocusTime();
   el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
 }
 
@@ -2228,7 +2148,7 @@ function updateFocusAccumulatedDisplay(currentElapsed = 0) {
   const el = document.getElementById('focus-acc-value-display');
   if (!el) return;
 
-  const totalSeconds = getTotalFocusTime(getTodayLogs()) + currentElapsed;
+  const totalSeconds = getCachedTodayFocusTime() + currentElapsed;
   el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
 }
 
@@ -2236,7 +2156,7 @@ function updateRecoveryAccumulatedDisplay() {
   const el = document.getElementById('recovery-acc-value');
   if (!el) return;
 
-  const totalSeconds = getTotalFocusTime(getTodayLogs());
+  const totalSeconds = getCachedTodayFocusTime();
   el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
 }
 
@@ -2304,15 +2224,9 @@ function renderTaskSlots() {
     addBtn.innerText = t('addTask');
   }
 
-  if (tasks.length === 1) {
-    container.style.gridTemplateColumns = '1fr';
-    container.style.maxWidth = '700px';
-    container.style.margin = '0 auto 20px auto';
-  } else {
-    container.style.gridTemplateColumns = '1fr 1fr';
-    container.style.maxWidth = '100%';
-    container.style.margin = '0 0 20px 0';
-  }
+  container.style.gridTemplateColumns = '1fr';
+  container.style.maxWidth = '860px';
+  container.style.margin = '0 auto 16px auto';
 
   for (let i = 0; i < tasks.length; i++) {
     const slot = document.createElement('div');
@@ -2434,6 +2348,7 @@ function tickFocusTimer() {
     saveFocusSegment(currentTaskName, focusSegmentStartedAt, next4AM, splitSeconds);
     focusSegmentStartedAt = next4AM;
     lastNotifiedMilestone = 0;
+    invalidateFocusTimeCache();
     saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
     showMilestoneMessage('日付が変わりました');
   }
@@ -2448,6 +2363,7 @@ function pauseAs(type) {
   const endedAt = Date.now();
   const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
   saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
+  invalidateFocusTimeCache();
   clearAllIntervals();
 
   isRecoveryMode = true;
@@ -2465,6 +2381,7 @@ function finishFocus() {
   const endedAt = Date.now();
   const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
   saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
+  invalidateFocusTimeCache();
   clearAllIntervals();
   clearActiveState();
   showSummary();
@@ -2617,6 +2534,27 @@ function getTodayLogs() {
   return logs[todayKey] || [];
 }
 
+/**
+ * 今日の累積集中時間（秒）をキャッシュ付きで返す
+ */
+function getCachedTodayFocusTime() {
+  const todayKey = getTodayKey();
+  if (cachedTodayKey !== todayKey) {
+    // 日付が変わったらキャッシュをリセット
+    cachedTodayKey = todayKey;
+    cachedTodayFocusTime = getTotalFocusTime(getTodayLogs());
+  }
+  return cachedTodayFocusTime;
+}
+
+/**
+ * 累積集中時間のキャッシュを無効化する（ログ変更時に呼び出す）
+ */
+function invalidateFocusTimeCache() {
+  cachedTodayKey = '';
+  cachedTodayFocusTime = -1;
+}
+
 function showSummary() {
   lastFocusedElement = document.activeElement;
   const todayLogs = getTodayLogs();
@@ -2703,6 +2641,7 @@ function resetLog() {
     const todayKey = getTodayKey();
     delete logs[todayKey];
     saveLogs(logs);
+    invalidateFocusTimeCache();
     showSummary();
   }
 }
@@ -2850,6 +2789,10 @@ function checkActiveState() {
       return;
     }
 
+    // 集中中の状態が残っている場合、main-screenを表示した上でバナーを重ねる
+    renderMainScreen();
+    switchScreen('main-screen');
+
     const banner = document.getElementById('recovery-banner');
     const text = document.getElementById('recovery-text');
     const elapsed = Math.floor((Date.now() - state.focusStartedAt) / 1000);
@@ -2877,7 +2820,10 @@ function checkActiveState() {
       if (state.focusStartedAt) {
         const endedAt = Date.now();
         const seconds = Math.round((endedAt - state.focusStartedAt) / 1000);
-        if (seconds > 0) saveFocusSegment(state.taskName, state.focusStartedAt, endedAt, seconds);
+        if (seconds > 0) {
+          saveFocusSegment(state.taskName, state.focusStartedAt, endedAt, seconds);
+          invalidateFocusTimeCache();
+        }
       }
       clearActiveState();
     };

@@ -202,6 +202,10 @@ let settings = {
 let audioCtx;
 const systemThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
 
+// 累積集中時間のキャッシュ（tickFocusTimer での毎秒計算を削減）
+let cachedTodayFocusTime = -1;
+let cachedTodayKey = '';
+
 function t(key, vars = {}) {
   const lang = TRANSLATIONS[settings.language] ? settings.language : 'ja';
   const template = TRANSLATIONS[lang][key] ?? TRANSLATIONS.ja[key] ?? key;
@@ -357,7 +361,7 @@ function updateMainAccumulatedDisplay() {
   const el = document.getElementById('main-acc-value-display');
   if (!el) return;
 
-  const totalSeconds = getTotalFocusTime(getTodayLogs());
+  const totalSeconds = getCachedTodayFocusTime();
   el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
 }
 
@@ -365,7 +369,7 @@ function updateFocusAccumulatedDisplay(currentElapsed = 0) {
   const el = document.getElementById('focus-acc-value-display');
   if (!el) return;
 
-  const totalSeconds = getTotalFocusTime(getTodayLogs()) + currentElapsed;
+  const totalSeconds = getCachedTodayFocusTime() + currentElapsed;
   el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
 }
 
@@ -373,7 +377,7 @@ function updateRecoveryAccumulatedDisplay() {
   const el = document.getElementById('recovery-acc-value');
   if (!el) return;
 
-  const totalSeconds = getTotalFocusTime(getTodayLogs());
+  const totalSeconds = getCachedTodayFocusTime();
   el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
 }
 
@@ -565,6 +569,7 @@ function tickFocusTimer() {
     saveFocusSegment(currentTaskName, focusSegmentStartedAt, next4AM, splitSeconds);
     focusSegmentStartedAt = next4AM;
     lastNotifiedMilestone = 0;
+    invalidateFocusTimeCache();
     saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
     showMilestoneMessage('日付が変わりました');
   }
@@ -579,6 +584,7 @@ function pauseAs(type) {
   const endedAt = Date.now();
   const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
   saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
+  invalidateFocusTimeCache();
   clearAllIntervals();
 
   isRecoveryMode = true;
@@ -596,6 +602,7 @@ function finishFocus() {
   const endedAt = Date.now();
   const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
   saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
+  invalidateFocusTimeCache();
   clearAllIntervals();
   clearActiveState();
   showSummary();
@@ -748,6 +755,27 @@ function getTodayLogs() {
   return logs[todayKey] || [];
 }
 
+/**
+ * 今日の累積集中時間（秒）をキャッシュ付きで返す
+ */
+function getCachedTodayFocusTime() {
+  const todayKey = getTodayKey();
+  if (cachedTodayKey !== todayKey) {
+    // 日付が変わったらキャッシュをリセット
+    cachedTodayKey = todayKey;
+    cachedTodayFocusTime = getTotalFocusTime(getTodayLogs());
+  }
+  return cachedTodayFocusTime;
+}
+
+/**
+ * 累積集中時間のキャッシュを無効化する（ログ変更時に呼び出す）
+ */
+function invalidateFocusTimeCache() {
+  cachedTodayKey = '';
+  cachedTodayFocusTime = -1;
+}
+
 function showSummary() {
   lastFocusedElement = document.activeElement;
   const todayLogs = getTodayLogs();
@@ -834,6 +862,7 @@ function resetLog() {
     const todayKey = getTodayKey();
     delete logs[todayKey];
     saveLogs(logs);
+    invalidateFocusTimeCache();
     showSummary();
   }
 }
@@ -981,6 +1010,10 @@ function checkActiveState() {
       return;
     }
 
+    // 集中中の状態が残っている場合、main-screenを表示した上でバナーを重ねる
+    renderMainScreen();
+    switchScreen('main-screen');
+
     const banner = document.getElementById('recovery-banner');
     const text = document.getElementById('recovery-text');
     const elapsed = Math.floor((Date.now() - state.focusStartedAt) / 1000);
@@ -1008,7 +1041,10 @@ function checkActiveState() {
       if (state.focusStartedAt) {
         const endedAt = Date.now();
         const seconds = Math.round((endedAt - state.focusStartedAt) / 1000);
-        if (seconds > 0) saveFocusSegment(state.taskName, state.focusStartedAt, endedAt, seconds);
+        if (seconds > 0) {
+          saveFocusSegment(state.taskName, state.focusStartedAt, endedAt, seconds);
+          invalidateFocusTimeCache();
+        }
       }
       clearActiveState();
     };

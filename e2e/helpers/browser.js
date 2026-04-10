@@ -194,7 +194,7 @@ export function countElements(selector) {
  * 指定ミリ秒待機
  */
 export function wait(ms) {
-  execSync(`node -e "setTimeout(() => {}, ${ms})"`, { encoding: 'utf-8' });
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
