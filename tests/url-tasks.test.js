@@ -57,4 +57,10 @@ describe('applyTasksFromHash', () => {
   it('tasks パラメータがないと null', () => {
     expect(applyTasksFromHash('#theme=dark', ['A'], 6)).toBeNull();
   });
+
+  it('長いタスク名は200文字に切り捨てる', () => {
+    const longName = 'A'.repeat(300);
+    const result = applyTasksFromHash(`#tasks=${longName}`, [], 6);
+    expect(result.tasks[0].length).toBe(200);
+  });
 });

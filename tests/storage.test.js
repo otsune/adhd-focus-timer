@@ -28,6 +28,22 @@ describe('loadLogs / saveLogs', () => {
     expect(loadLogs()).toEqual(data);
   });
 
+  it('不正なログセグメントをフィルターする', () => {
+    const data = {
+      '2025-01-15': [
+        { id: 'a', taskName: 'T', startedAt: 1, endedAt: 2, seconds: 1 },
+        { id: 'b', taskName: '', startedAt: -1, endedAt: NaN, seconds: 0 },
+        'invalid-string',
+        null,
+      ],
+      'invalid-key': [{ id: 'c', taskName: 'X', startedAt: 1, endedAt: 2, seconds: 1 }],
+    };
+    saveLogs(data);
+    const loaded = loadLogs();
+    expect(loaded['2025-01-15']).toHaveLength(1);
+    expect(loaded['invalid-key']).toBeUndefined();
+  });
+
   it('不正JSONは空オブジェクトを返す', () => {
     localStorage.setItem(STORAGE_KEYS.logs, 'not json');
     expect(loadLogs()).toEqual({});
@@ -39,11 +55,11 @@ describe('loadLogs / saveLogs', () => {
   });
 
   it('上書き動作', () => {
-    saveLogs({ first: [] });
-    saveLogs({ second: [] });
+    saveLogs({ '2025-01-01': [] });
+    saveLogs({ '2025-01-02': [] });
     const result = loadLogs();
-    expect(result).toEqual({ second: [] });
-    expect(result.first).toBeUndefined();
+    expect(result).toEqual({ '2025-01-02': [] });
+    expect(result['2025-01-01']).toBeUndefined();
   });
 });
 
@@ -56,6 +72,17 @@ describe('loadTasks / saveTasks', () => {
     const tasks = ['タスクA', 'タスクB'];
     saveTasks(tasks);
     expect(loadTasks()).toEqual(tasks);
+  });
+
+  it('長いタスク名は200文字に切り捨てる', () => {
+    const longTasks = ['A'.repeat(300)];
+    saveTasks(longTasks);
+    expect(loadTasks()[0].length).toBe(200);
+  });
+
+  it('非文字列要素をフィルターする', () => {
+    localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify([123, null, '', 'valid']));
+    expect(loadTasks()).toEqual(['valid']);
   });
 
   it('空配列はデフォルトに戻る', () => {

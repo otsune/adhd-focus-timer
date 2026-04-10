@@ -7,6 +7,18 @@ export const STORAGE_KEYS = {
   activeState: 'activeState_v2',
 };
 
+/**
+ * ログセグメントの構造を検証する
+ */
+function isValidLogSegment(seg) {
+  return seg &&
+    typeof seg === 'object' &&
+    typeof seg.taskName === 'string' &&
+    Number.isFinite(seg.startedAt) && seg.startedAt > 0 &&
+    Number.isFinite(seg.endedAt) && seg.endedAt > 0 &&
+    Number.isFinite(seg.seconds) && seg.seconds > 0;
+}
+
 export function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
@@ -15,7 +27,16 @@ export function loadLogs() {
   const data = localStorage.getItem(STORAGE_KEYS.logs);
   if (!data) return {};
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+
+    const sanitized = {};
+    for (const [key, segments] of Object.entries(parsed)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+      if (!Array.isArray(segments)) continue;
+      sanitized[key] = segments.filter(isValidLogSegment);
+    }
+    return sanitized;
   } catch (e) {
     return {};
   }
@@ -39,7 +60,9 @@ export function loadTasks() {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed
+          .filter((t) => typeof t === 'string' && t.trim() !== '')
+          .map((t) => String(t).slice(0, 200));
       }
     } catch (e) { }
   }

@@ -29,6 +29,7 @@ import {
 import { MILESTONE_INTERVAL, getMilestoneAction } from './milestone.js';
 
 const MAX_TASKS = 6;
+const MAX_TASK_NAME_LENGTH = 200;
 const TRANSLATIONS = {
   ja: {
     appTitle: 'ADHD Focus Timer',
@@ -467,9 +468,10 @@ function renderTaskSlots() {
     input.type = 'text';
     input.placeholder = t('taskPlaceholder');
     input.setAttribute('aria-label', t('taskInputAria', { index: i + 1 }));
+    input.setAttribute('maxlength', String(MAX_TASK_NAME_LENGTH));
     input.value = tasks[i] || '';
     input.addEventListener('input', (e) => {
-      tasks[i] = e.target.value;
+      tasks[i] = e.target.value.slice(0, MAX_TASK_NAME_LENGTH);
       saveTasks(tasks);
     });
     slot.appendChild(input);
@@ -479,7 +481,7 @@ function renderTaskSlots() {
     btn.innerText = t('startDirect');
     btn.addEventListener('click', () => {
       initAudio();
-      const taskName = input.value.trim() || t('unnamedTask');
+      const taskName = input.value.trim().slice(0, MAX_TASK_NAME_LENGTH) || t('unnamedTask');
       startFocus(taskName);
     });
     slot.appendChild(btn);
@@ -891,7 +893,9 @@ function exportLogsAsCSV() {
     for (const seg of segments) {
       const startStr = new Date(seg.startedAt).toLocaleString('ja-JP');
       const endStr = new Date(seg.endedAt).toLocaleString('ja-JP');
-      const taskEscaped = '"' + seg.taskName.replace(/"/g, '""') + '"';
+      // CSVインジェクション対策: 危険文字で始まる場合シングルクォートでエスケープ
+      const taskName = seg.taskName.replace(/"/g, '""');
+      const taskEscaped = /^[=+\-@]/.test(taskName) ? "'" + taskName : '"' + taskName + '"';
       rows.push([dayKey, taskEscaped, startStr, endStr, seg.seconds].join(','));
     }
   }
@@ -912,7 +916,8 @@ async function handleImportTodoTxt(event) {
   if (!file) return;
 
   const text = await file.text();
-  const importedTasks = extractActiveTasksFromTodoTxt(text);
+  const importedTasks = extractActiveTasksFromTodoTxt(text)
+    .map((t) => t.slice(0, MAX_TASK_NAME_LENGTH));
   event.target.value = '';
 
   if (importedTasks.length === 0) {
@@ -992,21 +997,26 @@ function checkActiveState() {
 
   try {
     const state = JSON.parse(data);
-    if (!state || !state.status) {
+    if (!state || typeof state.status !== 'string') {
       clearActiveState();
       return;
     }
 
     if (state.status === 'recovery') {
       isRecoveryMode = true;
-      lastTaskName = state.taskName || '';
-      lastPauseType = state.pauseType || '';
-      pausedAt = state.pausedAt || null;
+      lastTaskName = typeof state.taskName === 'string' ? state.taskName.slice(0, 200) : '';
+      lastPauseType = typeof state.pauseType === 'string' ? state.pauseType : '';
+      pausedAt = Number.isFinite(state.pausedAt) && state.pausedAt > 0 ? state.pausedAt : null;
       renderMainScreen();
       return;
     }
 
     if (state.status !== 'focus') {
+      clearActiveState();
+      return;
+    }
+
+    if (!Number.isFinite(state.focusStartedAt) || state.focusStartedAt <= 0) {
       clearActiveState();
       return;
     }

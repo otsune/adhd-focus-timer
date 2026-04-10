@@ -1,9 +1,11 @@
+const MAX_TASK_NAME_LENGTH = 200;
+
 function normalizeTasks(tasks) {
   const seen = new Set();
   const normalized = [];
 
   for (const task of tasks) {
-    const value = String(task || '').trim();
+    const value = String(task || '').trim().slice(0, MAX_TASK_NAME_LENGTH);
     if (value === '' || seen.has(value)) continue;
     seen.add(value);
     normalized.push(value);
