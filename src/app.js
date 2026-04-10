@@ -724,8 +724,9 @@ function handleFocusMilestone(elapsedSeconds) {
   if (!action) return;
 
   lastNotifiedMilestone = action.newLastNotified;
-  if (action.type === 'flash') {
+  if (action.type === 'flash_chime') {
     flashScreen();
+    playBeep('milestone');
   } else if (action.type === 'sound_message') {
     playBeep('milestone');
     showMilestoneMessage(action.message);

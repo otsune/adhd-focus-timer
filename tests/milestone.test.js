@@ -16,9 +16,9 @@ describe('getMilestoneAction', () => {
     expect(getMilestoneAction(899, 0)).toBeNull();
   });
 
-  it('15分 (奇数回1) → flash', () => {
+  it('15分 (奇数回1) → flash_chime', () => {
     const result = getMilestoneAction(900, 0);
-    expect(result).toEqual({ type: 'flash', newLastNotified: 900 });
+    expect(result).toEqual({ type: 'flash_chime', newLastNotified: 900 });
   });
 
   it('15分台で通知済み → null', () => {
@@ -34,9 +34,9 @@ describe('getMilestoneAction', () => {
     expect(result).toEqual({ type: 'sound_message', message: '30分経過', newLastNotified: 1800 });
   });
 
-  it('45分 (奇数回3) → flash', () => {
+  it('45分 (奇数回3) → flash_chime', () => {
     const result = getMilestoneAction(2700, 1800);
-    expect(result).toEqual({ type: 'flash', newLastNotified: 2700 });
+    expect(result).toEqual({ type: 'flash_chime', newLastNotified: 2700 });
   });
 
   it('60分 (偶数回4) → sound_message', () => {
@@ -44,9 +44,9 @@ describe('getMilestoneAction', () => {
     expect(result).toEqual({ type: 'sound_message', message: '60分経過', newLastNotified: 3600 });
   });
 
-  it('75分 (奇数回5) → flash', () => {
+  it('75分 (奇数回5) → flash_chime', () => {
     const result = getMilestoneAction(4500, 3600);
-    expect(result).toEqual({ type: 'flash', newLastNotified: 4500 });
+    expect(result).toEqual({ type: 'flash_chime', newLastNotified: 4500 });
   });
 
   it('90分 (偶数回6) → sound_message', () => {
