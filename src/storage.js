@@ -137,6 +137,34 @@ export function clearActiveState() {
   localStorage.removeItem(STORAGE_KEYS.activeState);
 }
 
+export function parseActiveState(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+
+  if (raw.status === 'focus') {
+    if (typeof raw.taskName !== 'string' || raw.taskName.trim() === '') return null;
+    if (!Number.isFinite(raw.focusStartedAt) || raw.focusStartedAt <= 0) return null;
+    return {
+      kind: 'focus',
+      taskName: raw.taskName.slice(0, 200),
+      focusStartedAt: raw.focusStartedAt,
+    };
+  }
+
+  if (raw.status === 'recovery') {
+    if (typeof raw.taskName !== 'string' || raw.taskName.trim() === '') return null;
+    if (!Number.isFinite(raw.pausedAt) || raw.pausedAt <= 0) return null;
+    const pauseType = (raw.pauseType === 'away' || raw.pauseType === 'meal') ? raw.pauseType : '';
+    return {
+      kind: 'recovery',
+      taskName: raw.taskName.slice(0, 200),
+      pausedAt: raw.pausedAt,
+      pauseType,
+    };
+  }
+
+  return null;
+}
+
 /**
  * 集中区間をログに保存する
  */

@@ -11,6 +11,7 @@ import {
   saveActiveState,
   clearActiveState,
   saveFocusSegment,
+  parseActiveState,
 } from '../src/storage.js';
 
 beforeEach(() => {
@@ -304,6 +305,72 @@ describe('QuotaExceededError ハンドリング', () => {
     });
     const startedAt = new Date(2025, 0, 15, 10, 0).getTime();
     expect(saveFocusSegment('タスク', startedAt, startedAt + 60000, 60)).toBe(false);
+  });
+});
+
+describe('parseActiveState (schema validation)', () => {
+  it('null/undefined/非オブジェクト/配列は null を返す', () => {
+    expect(parseActiveState(null)).toBeNull();
+    expect(parseActiveState(undefined)).toBeNull();
+    expect(parseActiveState('string')).toBeNull();
+    expect(parseActiveState(42)).toBeNull();
+    expect(parseActiveState([])).toBeNull();
+  });
+
+  it('未知の status は null を返す', () => {
+    expect(parseActiveState({ status: 'unknown' })).toBeNull();
+    expect(parseActiveState({ status: '' })).toBeNull();
+    expect(parseActiveState({})).toBeNull();
+  });
+
+  it('focus: taskName が空/欠損なら null', () => {
+    expect(parseActiveState({ status: 'focus', focusStartedAt: 1000 })).toBeNull();
+    expect(parseActiveState({ status: 'focus', taskName: '', focusStartedAt: 1000 })).toBeNull();
+    expect(parseActiveState({ status: 'focus', taskName: '   ', focusStartedAt: 1000 })).toBeNull();
+  });
+
+  it('focus: focusStartedAt が非有限/0以下なら null', () => {
+    expect(parseActiveState({ status: 'focus', taskName: 'A' })).toBeNull();
+    expect(parseActiveState({ status: 'focus', taskName: 'A', focusStartedAt: NaN })).toBeNull();
+    expect(parseActiveState({ status: 'focus', taskName: 'A', focusStartedAt: 0 })).toBeNull();
+    expect(parseActiveState({ status: 'focus', taskName: 'A', focusStartedAt: -100 })).toBeNull();
+  });
+
+  it('recovery: taskName が空/欠損なら null', () => {
+    expect(parseActiveState({ status: 'recovery', pausedAt: 1000 })).toBeNull();
+    expect(parseActiveState({ status: 'recovery', taskName: '', pausedAt: 1000 })).toBeNull();
+  });
+
+  it('recovery: pausedAt が非有限/0以下なら null', () => {
+    expect(parseActiveState({ status: 'recovery', taskName: 'A' })).toBeNull();
+    expect(parseActiveState({ status: 'recovery', taskName: 'A', pausedAt: NaN })).toBeNull();
+    expect(parseActiveState({ status: 'recovery', taskName: 'A', pausedAt: -1 })).toBeNull();
+  });
+
+  it('正常な focus を {kind:"focus", ...} で返す + taskName を 200 字に切り詰める', () => {
+    const long = 'A'.repeat(300);
+    expect(parseActiveState({ status: 'focus', taskName: 'タスクA', focusStartedAt: 1234567890 })).toEqual({
+      kind: 'focus',
+      taskName: 'タスクA',
+      focusStartedAt: 1234567890,
+    });
+    const result = parseActiveState({ status: 'focus', taskName: long, focusStartedAt: 1 });
+    expect(result.taskName.length).toBe(200);
+  });
+
+  it('正常な recovery を {kind:"recovery", ...} で返す + pauseType を away/meal/空に正規化', () => {
+    expect(parseActiveState({ status: 'recovery', taskName: 'A', pausedAt: 1000, pauseType: 'away' })).toEqual({
+      kind: 'recovery', taskName: 'A', pausedAt: 1000, pauseType: 'away',
+    });
+    expect(parseActiveState({ status: 'recovery', taskName: 'A', pausedAt: 1000, pauseType: 'meal' })).toEqual({
+      kind: 'recovery', taskName: 'A', pausedAt: 1000, pauseType: 'meal',
+    });
+    expect(parseActiveState({ status: 'recovery', taskName: 'A', pausedAt: 1000, pauseType: 'invalid' })).toEqual({
+      kind: 'recovery', taskName: 'A', pausedAt: 1000, pauseType: '',
+    });
+    expect(parseActiveState({ status: 'recovery', taskName: 'A', pausedAt: 1000 })).toEqual({
+      kind: 'recovery', taskName: 'A', pausedAt: 1000, pauseType: '',
+    });
   });
 });
 

@@ -11,6 +11,7 @@ import {
   saveActiveState,
   clearActiveState,
   saveFocusSegment,
+  parseActiveState,
 } from './storage.js';
 import {
   serializeTasksToTodoTxt,
@@ -995,73 +996,64 @@ function checkActiveState() {
   const data = localStorage.getItem(STORAGE_KEYS.activeState);
   if (!data) return;
 
+  let raw;
   try {
-    const state = JSON.parse(data);
-    if (!state || typeof state.status !== 'string') {
-      clearActiveState();
-      return;
-    }
-
-    if (state.status === 'recovery') {
-      isRecoveryMode = true;
-      lastTaskName = typeof state.taskName === 'string' ? state.taskName.slice(0, 200) : '';
-      lastPauseType = typeof state.pauseType === 'string' ? state.pauseType : '';
-      pausedAt = Number.isFinite(state.pausedAt) && state.pausedAt > 0 ? state.pausedAt : null;
-      renderMainScreen();
-      return;
-    }
-
-    if (state.status !== 'focus') {
-      clearActiveState();
-      return;
-    }
-
-    if (!Number.isFinite(state.focusStartedAt) || state.focusStartedAt <= 0) {
-      clearActiveState();
-      return;
-    }
-
-    // 集中中の状態が残っている場合、main-screenを表示した上でバナーを重ねる
-    renderMainScreen();
-    switchScreen('main-screen');
-
-    const banner = document.getElementById('recovery-banner');
-    const text = document.getElementById('recovery-text');
-    const elapsed = Math.floor((Date.now() - state.focusStartedAt) / 1000);
-    text.innerText = t('recoveryBannerActive', { task: state.taskName, elapsed: formatElapsedTime(elapsed) });
-    banner.classList.add('active');
-
-    document.getElementById('btn-recovery-resume').onclick = () => {
-      banner.classList.remove('active');
-      initAudio();
-      currentTaskName = state.taskName;
-      focusSegmentStartedAt = state.focusStartedAt;
-      const elapsedSeconds = Math.floor((Date.now() - focusSegmentStartedAt) / 1000);
-      lastNotifiedMilestone = Math.floor(elapsedSeconds / MILESTONE_INTERVAL) * MILESTONE_INTERVAL;
-      document.getElementById('focus-task-display').innerText = currentTaskName;
-      updateFocusAccumulatedDisplay(elapsedSeconds);
-      switchScreen('focus-screen');
-      clearAllIntervals();
-      focusIntervalId = setInterval(tickFocusTimer, 1000);
-      saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
-      tickFocusTimer();
-    };
-
-    document.getElementById('btn-recovery-discard').onclick = () => {
-      banner.classList.remove('active');
-      if (state.focusStartedAt) {
-        const endedAt = Date.now();
-        const seconds = Math.round((endedAt - state.focusStartedAt) / 1000);
-        if (seconds > 0) {
-          saveFocusSegment(state.taskName, state.focusStartedAt, endedAt, seconds);
-          invalidateFocusTimeCache();
-        }
-      }
-      clearActiveState();
-    };
+    raw = JSON.parse(data);
   } catch (e) {
     clearActiveState();
+    return;
   }
+
+  const parsed = parseActiveState(raw);
+  if (!parsed) {
+    clearActiveState();
+    return;
+  }
+
+  if (parsed.kind === 'recovery') {
+    isRecoveryMode = true;
+    lastTaskName = parsed.taskName;
+    lastPauseType = parsed.pauseType;
+    pausedAt = parsed.pausedAt;
+    renderMainScreen();
+    return;
+  }
+
+  renderMainScreen();
+  switchScreen('main-screen');
+
+  const banner = document.getElementById('recovery-banner');
+  const text = document.getElementById('recovery-text');
+  const elapsed = Math.floor((Date.now() - parsed.focusStartedAt) / 1000);
+  text.innerText = t('recoveryBannerActive', { task: parsed.taskName, elapsed: formatElapsedTime(elapsed) });
+  banner.classList.add('active');
+
+  document.getElementById('btn-recovery-resume').onclick = () => {
+    banner.classList.remove('active');
+    initAudio();
+    currentTaskName = parsed.taskName;
+    focusSegmentStartedAt = parsed.focusStartedAt;
+    const elapsedSeconds = Math.floor((Date.now() - focusSegmentStartedAt) / 1000);
+    lastNotifiedMilestone = Math.floor(elapsedSeconds / MILESTONE_INTERVAL) * MILESTONE_INTERVAL;
+    document.getElementById('focus-task-display').innerText = currentTaskName;
+    updateFocusAccumulatedDisplay(elapsedSeconds);
+    switchScreen('focus-screen');
+    clearAllIntervals();
+    focusIntervalId = setInterval(tickFocusTimer, 1000);
+    saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
+    tickFocusTimer();
+  };
+
+  document.getElementById('btn-recovery-discard').onclick = () => {
+    banner.classList.remove('active');
+    const endedAt = Date.now();
+    const seconds = Math.round((endedAt - parsed.focusStartedAt) / 1000);
+    if (seconds > 0) {
+      saveFocusSegment(parsed.taskName, parsed.focusStartedAt, endedAt, seconds);
+      invalidateFocusTimeCache();
+    }
+    clearActiveState();
+  };
 }
 
 function clearAllIntervals() {
