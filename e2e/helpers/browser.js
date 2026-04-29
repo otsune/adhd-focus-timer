@@ -66,12 +66,13 @@ export function openUrl(url) {
  * ページの状態（クリック可能要素一覧）を取得
  */
 export function state() {
-  let result = run('state');
-  if (result.includes('Empty DOM tree')) {
-    wait(1000);
-    result = run('state');
-  }
-  return result;
+  return retry(() => {
+    const result = run('state');
+    if (result.includes('Empty DOM tree')) {
+      throw new Error('Empty DOM');
+    }
+    return result;
+  }, 3, 800);
 }
 
 /**
@@ -195,6 +196,21 @@ export function countElements(selector) {
  */
 export function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function waitWithJitter(baseMs, jitterMs = 300) {
+  return wait(baseMs + Math.floor(Math.random() * jitterMs));
+}
+
+export async function retry(fn, maxAttempts = 3, baseDelay = 500) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt === maxAttempts) throw e;
+      await wait(baseDelay * Math.pow(2, attempt - 1));
+    }
+  }
 }
 
 /**
