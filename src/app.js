@@ -542,6 +542,15 @@ function startFocus(taskName) {
   const wasRecovery = isRecoveryMode;
   isRecoveryMode = false;
 
+  if (wasRecovery && taskName) {
+    const idx = tasks.indexOf(taskName);
+    if (idx > 0) {
+      tasks.splice(idx, 1);
+      tasks.unshift(taskName);
+      saveTasks();
+    }
+  }
+
   currentTaskName = taskName;
   focusSegmentStartedAt = Date.now();
   lastNotifiedMilestone = 0;
