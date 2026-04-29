@@ -19,6 +19,21 @@ describe('getTasksFromHash', () => {
       replace: true,
     });
   });
+
+  it('hash 全体が 4KB 超で tasks 含むなら空 tasks を返して strip シグナルにする', () => {
+    const huge = 'tasks=' + 'A'.repeat(5000);
+    expect(getTasksFromHash('#' + huge)).toEqual({ tasks: [], replace: false });
+  });
+
+  it('hash 全体が 4KB 超で tasks 含まないなら null', () => {
+    const huge = 'theme=' + 'A'.repeat(5000);
+    expect(getTasksFromHash('#' + huge)).toBeNull();
+  });
+
+  it('tasks フィールドが 2KB 超なら空 tasks を返す', () => {
+    const longTasksField = 'A'.repeat(2500);
+    expect(getTasksFromHash('#tasks=' + longTasksField)).toEqual({ tasks: [], replace: false });
+  });
 });
 
 describe('applyTasksFromHash', () => {
@@ -27,6 +42,7 @@ describe('applyTasksFromHash', () => {
       tasks: ['A', 'B'],
       replace: true,
       applied: true,
+      shouldClearHash: true,
     });
   });
 
@@ -35,6 +51,7 @@ describe('applyTasksFromHash', () => {
       tasks: ['A', 'B', 'C'],
       replace: false,
       applied: true,
+      shouldClearHash: true,
     });
   });
 
@@ -43,6 +60,7 @@ describe('applyTasksFromHash', () => {
       tasks: ['A', 'B'],
       replace: false,
       applied: true,
+      shouldClearHash: true,
     });
   });
 
@@ -51,6 +69,7 @@ describe('applyTasksFromHash', () => {
       tasks: ['A', 'B', 'C'],
       replace: false,
       applied: true,
+      shouldClearHash: true,
     });
   });
 
@@ -62,5 +81,14 @@ describe('applyTasksFromHash', () => {
     const longName = 'A'.repeat(300);
     const result = applyTasksFromHash(`#tasks=${longName}`, [], 6);
     expect(result.tasks[0].length).toBe(200);
+  });
+
+  it('空 #tasks= でも shouldClearHash:true で URL 掃除を促す (applied:false)', () => {
+    expect(applyTasksFromHash('#tasks=', ['A'], 6)).toEqual({
+      tasks: ['A'],
+      replace: false,
+      applied: false,
+      shouldClearHash: true,
+    });
   });
 });
