@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getTasksFromHash, applyTasksFromHash } from '../src/url-tasks.js';
+import { getTasksFromHash, applyTasksFromHash, buildTasksHash } from '../src/url-tasks.js';
 
 describe('getTasksFromHash', () => {
   it('tasks パラメータがないと null', () => {
@@ -90,5 +90,35 @@ describe('applyTasksFromHash', () => {
       applied: false,
       shouldClearHash: true,
     });
+  });
+});
+
+describe('buildTasksHash (D3 integrity)', () => {
+  it(' builds hash with _ck checksum', () => {
+    const hash = buildTasksHash(['Task A', 'Task B']);
+    expect(hash).toMatch(/^#tasks=.+&_ck=.+$/);
+    expect(hash).not.toContain('replace=1');
+  });
+
+  it(' replace=true adds replace=1', () => {
+    const hash = buildTasksHash(['Task A'], true);
+    expect(hash).toContain('replace=1');
+  });
+
+  it(' generate valid hash that passes getTasksFromHash verification', () => {
+    const tasks = ['Write docs', 'Review PR'];
+    const hash = buildTasksHash(tasks);
+    const parsed = getTasksFromHash(hash);
+    expect(parsed).toEqual({ tasks, replace: false });
+  });
+
+  it(' tampered _ck causes getTasksFromHash to return null', () => {
+    const hash = buildTasksHash(['Task A']);
+    const tampered = hash.replace('_ck=', '_ck=invalid');
+    expect(getTasksFromHash(tampered)).toBeNull();
+  });
+
+  it(' missing _ck still works (backward compat)', () => {
+    expect(getTasksFromHash('#tasks=A|B')).toEqual({ tasks: ['A', 'B'], replace: false });
   });
 });
