@@ -306,3 +306,37 @@ describe('QuotaExceededError ハンドリング', () => {
     expect(saveFocusSegment('タスク', startedAt, startedAt + 60000, 60)).toBe(false);
   });
 });
+
+describe('SecurityError ハンドリング on getItem (Safari private mode 等)', () => {
+  let getItemSpy;
+
+  beforeEach(() => {
+    getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('access denied', 'SecurityError');
+    });
+  });
+
+  afterEach(() => {
+    getItemSpy.mockRestore();
+  });
+
+  it('loadLogs: SecurityError時は例外を投げず空オブジェクトを返す', () => {
+    expect(() => loadLogs()).not.toThrow();
+    expect(loadLogs()).toEqual({});
+  });
+
+  it('loadTasks: SecurityError時は例外を投げずデフォルト [""] を返す', () => {
+    expect(() => loadTasks()).not.toThrow();
+    expect(loadTasks()).toEqual(['']);
+  });
+
+  it('loadSettings: SecurityError時は例外を投げずデフォルト設定を返す', () => {
+    expect(() => loadSettings()).not.toThrow();
+    expect(loadSettings()).toEqual({
+      milestoneEnabled: true,
+      soundEnabled: true,
+      themeMode: 'system',
+      language: 'ja',
+    });
+  });
+});

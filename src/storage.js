@@ -23,8 +23,17 @@ export function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
+// Safari private mode 等で getItem 自体が SecurityError を投げる環境への防御
+function safeGetItem(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    return null;
+  }
+}
+
 export function loadLogs() {
-  const data = localStorage.getItem(STORAGE_KEYS.logs);
+  const data = safeGetItem(STORAGE_KEYS.logs);
   if (!data) return {};
   try {
     const parsed = JSON.parse(data);
@@ -55,7 +64,7 @@ export function saveLogs(logs) {
  * タスク一覧をlocalStorageから読み込んで返す
  */
 export function loadTasks() {
-  const saved = localStorage.getItem(STORAGE_KEYS.tasks);
+  const saved = safeGetItem(STORAGE_KEYS.tasks);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -86,7 +95,7 @@ export function saveTasks(tasks) {
  */
 export function loadSettings() {
   const defaults = { milestoneEnabled: true, soundEnabled: true, themeMode: 'system', language: 'ja' };
-  const saved = localStorage.getItem(STORAGE_KEYS.settings);
+  const saved = safeGetItem(STORAGE_KEYS.settings);
   if (saved) {
     try {
       const s = JSON.parse(saved);
