@@ -33,6 +33,16 @@ const MODULE_ORDER = [
   'src/tasks.js',        // -> constants, storage
   'src/timer.js',        // -> constants, date-utils, storage
   'src/export.js',       // -> storage, todotxt, date-utils, constants
+  // 第3.5層
+  'src/app-utils.js',    // -> i18n, state, utils (shared tr/uiDuration)
+  'src/task-ui.js',      // -> tasks, state, audio, constants, app-utils
+  'src/roulette.js',     // -> tasks, state, constants, i18n
+  // 第4a層
+  'src/summary-ui.js',   // -> state, ui, stats, storage, utils, app-utils
+  'src/settings-ui.js',  // -> state, theme, ui, app-utils, storage, summary-ui
+  // 第4b層
+  'src/recovery-ui.js',  // -> app-utils, tasks, audio, roulette, summary-ui, timer, storage, utils
+  'src/focus-session.js', // -> app-utils, state, recovery-ui, tasks, settings-ui, audio, storage, timer, summary-ui, milestone, stats, date-utils, utils, constants
   // 第4層
   'src/app.js',          // -> ALL
 ];

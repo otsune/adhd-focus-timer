@@ -10,6 +10,8 @@ export const MAX_TASK_NAME_LENGTH = 200;
 export const UNDO_TIMEOUT_MS = 5000;
 export const FLASH_DURATION_MS = 1900;
 export const MILESTONE_MESSAGE_DURATION_MS = 3600;
+export const ADDTASK_FOCUS_DELAY_MS = 50;
+export const SCREEN_SWITCH_DELAY_MS = 100;
 
 // Animation intervals
 export const ROULETTE_INTERVAL_MS = 60;

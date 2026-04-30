@@ -1396,6 +1396,8 @@ const MAX_TASK_NAME_LENGTH = 200;
 const UNDO_TIMEOUT_MS = 5000;
 const FLASH_DURATION_MS = 1900;
 const MILESTONE_MESSAGE_DURATION_MS = 3600;
+const ADDTASK_FOCUS_DELAY_MS = 50;
+const SCREEN_SWITCH_DELAY_MS = 100;
 
 // Animation intervals
 const ROULETTE_INTERVAL_MS = 60;
@@ -2527,46 +2529,284 @@ function interpolateFilename(pattern, dayKey) {
   return pattern.replace('{day}', dayKey);
 }
 
-// === src/app.js ===
-let rouletteIntervalId = null;
+// === src/app-utils.js ===
+const tr = (key, vars = {}) => t(key, vars, getSetting('language'));
+const uiDuration = (totalSeconds) => formatDuration(totalSeconds, getSetting('language'));
 
+// === src/task-ui.js ===
 let undoTimeout = null;
 let undoData = null;
 
-let isRecoveryMode = false;
-let lastTaskName = '';
-let lastPauseType = '';
+let _tuOnStartFocus = null;
 
-let recoveryPausedAt = null;
+function setTaskUICallbacks({ onStartFocus }) {
+  _tuOnStartFocus = onStartFocus;
+}
 
-// 累積集中時間のキャッシュ（tickFocusTimer での毎秒計算を削減）
-let cachedTodayFocusTime = -1;
-let cachedTodayKey = '';
+function clearUndoState() {
+  if (undoTimeout) clearTimeout(undoTimeout);
+  undoTimeout = null;
+  undoData = null;
+}
 
-void getFocusableElements;
-void getAudioContext;
-void getCurrentTrapCleanup;
-void getFocusElapsed;
-void isTimerRunning;
-void getPauseElapsed;
-void downloadFile;
+function addTask() {
+  if (addNewTask()) {
+    renderTaskSlots();
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('.task-slot input');
+      if (inputs.length > 0) inputs[inputs.length - 1].focus();
+    }, ADDTASK_FOCUS_DELAY_MS);
+  }
+}
 
-window.addEventListener('focus-time-cache-invalidated', () => {
-  cachedTodayKey = '';
-  cachedTodayFocusTime = -1;
-});
+function removeTask(index) {
+  if (getTaskCount() > 1) {
+    const removedTask = getTaskAt(index);
+    removeTaskAt(index);
+    renderTaskSlots();
+    showUndoToast(removedTask, index);
+  }
+}
 
-const tr = (key, vars = {}) => t(key, vars, getSetting('language'));
+function showUndoToast(task, index) {
+  if (undoTimeout) clearTimeout(undoTimeout);
+  undoData = { task, index };
 
-function uiDuration(totalSeconds) {
-  return formatDuration(totalSeconds, getSetting('language'));
+  const toast = document.getElementById('undo-toast');
+  const label = task.trim() || tr('taskFallback');
+  document.getElementById('undo-toast-text').innerText = tr('undoToast', { task: label });
+  toast.classList.add('show');
+
+  undoTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+    undoData = null;
+    undoTimeout = null;
+  }, UNDO_TIMEOUT_MS);
+}
+
+function undoRemoveTask() {
+  if (!undoData) return;
+  if (undoTimeout) clearTimeout(undoTimeout);
+
+  const updatedTasks = getTasks();
+  updatedTasks.splice(undoData.index, 0, undoData.task);
+  setTasks(updatedTasks);
+  renderTaskSlots();
+  document.getElementById('undo-toast').classList.remove('show');
+  undoData = null;
+  undoTimeout = null;
+}
+
+function renderTaskSlots() {
+  const container = document.getElementById('task-slots');
+  container.innerHTML = '';
+
+  const addBtn = document.getElementById('btn-add-task');
+  if (!canAddTask()) {
+    addBtn.disabled = true;
+    addBtn.innerText = tr('addTaskMax');
+  } else {
+    addBtn.disabled = false;
+    addBtn.innerText = tr('addTask');
+  }
+
+  container.style.gridTemplateColumns = '1fr';
+  container.style.maxWidth = '860px';
+  container.style.margin = '0 auto 16px auto';
+
+  const tasks = getTasks();
+  for (let i = 0; i < tasks.length; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'task-slot';
+
+    if (tasks.length > 1) {
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'btn-remove';
+      removeBtn.innerHTML = '×';
+      removeBtn.title = tr('taskRemove');
+      removeBtn.setAttribute('aria-label', tr('taskRemove'));
+      removeBtn.addEventListener('click', () => removeTask(i));
+      slot.appendChild(removeBtn);
+    }
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = tr('taskPlaceholder');
+    input.setAttribute('aria-label', tr('taskInputAria', { index: i + 1 }));
+    input.setAttribute('maxlength', String(MAX_TASK_NAME_LENGTH));
+    input.value = tasks[i] || '';
+    input.addEventListener('input', (e) => {
+      setTaskAt(i, e.target.value.slice(0, MAX_TASK_NAME_LENGTH));
+    });
+    slot.appendChild(input);
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-start-direct';
+    btn.innerText = tr('startDirect');
+    btn.addEventListener('click', () => {
+      initAudio();
+      const taskName = input.value.trim().slice(0, MAX_TASK_NAME_LENGTH) || tr('unnamedTask');
+      if (_tuOnStartFocus) _tuOnStartFocus(taskName);
+    });
+    slot.appendChild(btn);
+    container.appendChild(slot);
+  }
+}
+
+// === src/roulette.js ===
+let rouletteIntervalId = null;
+let _rouOnStartFocus = null;
+let _rouGetIsRecoveryMode = null;
+
+function setRouletteCallbacks({ onStartFocus, getIsRecoveryMode }) {
+  _rouOnStartFocus = onStartFocus;
+  _rouGetIsRecoveryMode = getIsRecoveryMode;
+}
+
+function clearRouletteInterval() {
+  if (rouletteIntervalId) {
+    clearInterval(rouletteIntervalId);
+    rouletteIntervalId = null;
+  }
+}
+
+function startRoulette() {
+  const validTasks = getValidTasks();
+  if (validTasks.length === 0) {
+    alert(tr('needTaskAlert'));
+    return;
+  }
+
+  const isRecoveryMode = _rouGetIsRecoveryMode ? _rouGetIsRecoveryMode() : false;
+  const btnId = isRecoveryMode ? 'recovery-roulette-btn' : 'btn-roulette';
+  const rouletteBtn = document.getElementById(btnId);
+  const originalText = rouletteBtn.innerText;
+  rouletteBtn.disabled = true;
+
+  let counter = 0;
+  rouletteIntervalId = setInterval(() => {
+    if (rouletteIntervalId === null) return;
+    rouletteBtn.innerText = validTasks[Math.floor(Math.random() * validTasks.length)];
+    counter++;
+
+    if (counter > ROULETTE_CYCLES) {
+      clearInterval(rouletteIntervalId);
+      rouletteIntervalId = null;
+      const selected = validTasks[Math.floor(Math.random() * validTasks.length)];
+      rouletteBtn.innerText = originalText;
+      rouletteBtn.disabled = false;
+      if (_rouOnStartFocus) _rouOnStartFocus(selected);
+    }
+  }, ROULETTE_INTERVAL_MS);
+}
+
+// === src/summary-ui.js ===
+let _sumOnRenderMain = null;
+let _sumOnSwitchScreen = null;
+let _sumOnResetRecovery = null;
+
+function setSummaryCallbacks({ onRenderMain, onSwitchScreen, onResetRecovery }) {
+  _sumOnRenderMain = onRenderMain;
+  _sumOnSwitchScreen = onSwitchScreen;
+  _sumOnResetRecovery = onResetRecovery;
+}
+
+function _getSummaryLogs() {
+  const logs = loadLogs();
+  const todayKey = getTodayKey();
+  return logs[todayKey] || [];
+}
+
+function showSummary() {
+  setLastFocusedElement(document.activeElement);
+  const todayLogs = _getSummaryLogs();
+  const container = document.getElementById('summary-content');
+
+  if (todayLogs.length === 0) {
+    container.innerHTML = '<div class="summary-empty">' + tr('summaryEmpty') + '</div>';
+  } else {
+    const totalSeconds = getTotalFocusTime(todayLogs);
+    const longestSeconds = getLongestFocusSegment(todayLogs);
+    const startCount = getStartCount(todayLogs);
+    const bestSession = getBestSession(todayLogs);
+    const taskRanking = getTaskTimeRanking(todayLogs);
+    const firstStartTime = getFirstStartTime(todayLogs);
+    const inMorning = didStartInMorning(todayLogs);
+
+    let html = '';
+    html += '<div class="summary-hero">';
+    html += '<div class="summary-hero-label">' + tr('summaryHero') + '</div>';
+    html += '<div class="summary-hero-value">' + uiDuration(totalSeconds) + '</div>';
+    html += '</div>';
+
+    html += '<div class="summary-stats">';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryFirstStart') + '</div><div class="summary-stat-value">' + firstStartTime + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryMorningStart') + '</div><div class="summary-stat-value ' + (inMorning ? 'summary-stat-success' : 'summary-stat-muted') + '">' + (inMorning ? tr('summaryMorningDone') : tr('summaryMorningMiss')) + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryLongest') + '</div><div class="summary-stat-value">' + uiDuration(longestSeconds) + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryStartCount') + '</div><div class="summary-stat-value">' + tr('summaryStartCountValue', { count: startCount }) + '</div></div>';
+    html += '</div>';
+
+    if (bestSession) {
+      html += '<div class="summary-section">';
+      html += '<div class="summary-section-title">' + tr('summaryBestSession') + '</div>';
+      html += '<div class="best-session-display">';
+      html += '<span class="task-name">' + escapeHtml(bestSession.task) + '</span> ';
+      html += uiDuration(bestSession.seconds);
+      html += '</div></div>';
+    }
+
+    if (taskRanking.length > 0) {
+      html += '<div class="summary-section">';
+      html += '<div class="summary-section-title">' + tr('summaryTaskRanking') + '</div>';
+      taskRanking.forEach((item, index) => {
+        const medals = ['🥇', '🥈', '🥉'];
+        const position = index < medals.length ? medals[index] : String(index + 1) + '.';
+        html += '<div class="ranking-row">';
+        html += '<span class="ranking-position">' + position + '</span>';
+        html += '<span class="ranking-task">' + escapeHtml(item.task) + '</span>';
+        html += '<span class="ranking-time">' + uiDuration(item.seconds) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  const summaryModal = document.getElementById('summary-modal');
+  summaryModal.classList.add('active');
+  setCurrentTrapCleanup(trapFocus(summaryModal));
+  document.getElementById('btn-close-summary').focus();
+}
+
+function closeSummary() {
+  clearTrapCleanup();
+  document.getElementById('summary-modal').classList.remove('active');
+  if (_sumOnResetRecovery) _sumOnResetRecovery();
+  if (_sumOnRenderMain) _sumOnRenderMain();
+  if (_sumOnSwitchScreen) _sumOnSwitchScreen('main-screen');
+
+  const lastFocusedElement = getLastFocusedElement();
+  if (lastFocusedElement && lastFocusedElement.isConnected) {
+    lastFocusedElement.focus();
+  } else {
+    document.getElementById('btn-show-summary').focus();
+  }
+  setLastFocusedElement(null);
+}
+
+// === src/settings-ui.js ===
+let _setOnRenderMain = null;
+
+function setSettingsCallbacks({ onRenderMain }) {
+  _setOnRenderMain = onRenderMain;
 }
 
 function applyLanguage(language) {
   setSetting('language', TRANSLATIONS[language] ? language : 'ja');
   document.documentElement.lang = getSetting('language');
   applyStaticTranslations();
-  renderMainScreen();
+  if (_setOnRenderMain) _setOnRenderMain();
 
   if (document.getElementById('summary-modal').classList.contains('active')) {
     showSummary();
@@ -2643,221 +2883,86 @@ function updateFocusScreenTranslations() {
   setAttr('btn-finish-focus', 'aria-label', tr('finishFocusAria'));
 }
 
-function updateMainAccumulatedDisplay() {
-  const el = document.getElementById('main-acc-value-display');
-  if (!el) return;
-
-  const totalSeconds = getCachedTodayFocusTime();
-  el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
+function handleThemePreview() {
+  const previewTheme = document.querySelector('input[name="setting-theme"]:checked')?.value || getSetting('themeMode');
+  applyTheme(previewTheme);
 }
 
-function updateFocusAccumulatedDisplay(currentElapsed = 0) {
-  const el = document.getElementById('focus-acc-value-display');
-  if (!el) return;
-
-  const totalSeconds = getCachedTodayFocusTime() + currentElapsed;
-  el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
+function handleLanguagePreview() {
+  const previewLanguage = document.querySelector('input[name="setting-language"]:checked')?.value || getSetting('language');
+  applyLanguage(previewLanguage);
 }
 
-function updateRecoveryAccumulatedDisplay() {
-  const el = document.getElementById('recovery-acc-value');
-  if (!el) return;
+function showSettings() {
+  setLastFocusedElement(document.activeElement);
+  document.getElementById('setting-milestone').checked = getSetting('milestoneEnabled');
+  document.getElementById('setting-sound').checked = getSetting('soundEnabled');
+  const checkedThemeRadio = document.querySelector(`input[name="setting-theme"][value="${getSetting('themeMode')}"]`);
+  if (checkedThemeRadio) checkedThemeRadio.checked = true;
+  const checkedLanguageRadio = document.querySelector(`input[name="setting-language"][value="${getSetting('language')}"]`);
+  if (checkedLanguageRadio) checkedLanguageRadio.checked = true;
 
-  const totalSeconds = getCachedTodayFocusTime();
-  el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
+  const settingsModal = document.getElementById('settings-modal');
+  settingsModal.classList.add('active');
+  setCurrentTrapCleanup(trapFocus(settingsModal));
+  const firstRadio = document.querySelector('input[name="setting-theme"]:checked') || document.getElementById('setting-milestone');
+  firstRadio.focus();
 }
 
-function addTask() {
-  if (addNewTask()) {
-    renderTaskSlots();
-    setTimeout(() => {
-      const inputs = document.querySelectorAll('.task-slot input');
-      if (inputs.length > 0) inputs[inputs.length - 1].focus();
-    }, 50);
-  }
-}
+function handleSaveSettings() {
+  clearTrapCleanup();
+  const newSettings = {
+    milestoneEnabled: document.getElementById('setting-milestone').checked,
+    soundEnabled: document.getElementById('setting-sound').checked,
+    themeMode: document.querySelector('input[name="setting-theme"]:checked')?.value || 'system',
+    language: document.querySelector('input[name="setting-language"]:checked')?.value || 'ja',
+  };
+  updateSettings(newSettings);
+  applyTheme(newSettings.themeMode);
+  applyLanguage(newSettings.language);
+  document.getElementById('settings-modal').classList.remove('active');
 
-function removeTask(index) {
-  if (getTaskCount() > 1) {
-    const removedTask = getTaskAt(index);
-    const removedIndex = index;
-    removeTaskAt(index);
-    renderTaskSlots();
-    showUndoToast(removedTask, removedIndex);
-  }
-}
-
-function showUndoToast(task, index) {
-  if (undoTimeout) clearTimeout(undoTimeout);
-  undoData = { task, index };
-
-  const toast = document.getElementById('undo-toast');
-  const label = task.trim() || tr('taskFallback');
-  document.getElementById('undo-toast-text').innerText = tr('undoToast', { task: label });
-  toast.classList.add('show');
-
-  undoTimeout = setTimeout(() => {
-    toast.classList.remove('show');
-    undoData = null;
-    undoTimeout = null;
-  }, 5000);
-}
-
-function undoRemoveTask() {
-  if (!undoData) return;
-  if (undoTimeout) clearTimeout(undoTimeout);
-
-  const updatedTasks = getTasks();
-  updatedTasks.splice(undoData.index, 0, undoData.task);
-  setTasks(updatedTasks);
-  renderTaskSlots();
-  document.getElementById('undo-toast').classList.remove('show');
-  undoData = null;
-  undoTimeout = null;
-}
-
-function renderTaskSlots() {
-  const container = document.getElementById('task-slots');
-  container.innerHTML = '';
-
-  const addBtn = document.getElementById('btn-add-task');
-  if (!canAddTask()) {
-    addBtn.disabled = true;
-    addBtn.innerText = tr('addTaskMax');
+  const lastFocusedElement = getLastFocusedElement();
+  if (lastFocusedElement && lastFocusedElement.isConnected) {
+    lastFocusedElement.focus();
   } else {
-    addBtn.disabled = false;
-    addBtn.innerText = tr('addTask');
+    document.getElementById('btn-show-settings').focus();
   }
-
-  container.style.gridTemplateColumns = '1fr';
-  container.style.maxWidth = '860px';
-  container.style.margin = '0 auto 16px auto';
-
-  const tasks = getTasks();
-  for (let i = 0; i < tasks.length; i++) {
-    const slot = document.createElement('div');
-    slot.className = 'task-slot';
-
-    if (tasks.length > 1) {
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'btn-remove';
-      removeBtn.innerHTML = '×';
-      removeBtn.title = tr('taskRemove');
-      removeBtn.setAttribute('aria-label', tr('taskRemove'));
-      removeBtn.addEventListener('click', () => removeTask(i));
-      slot.appendChild(removeBtn);
-    }
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = tr('taskPlaceholder');
-    input.setAttribute('aria-label', tr('taskInputAria', { index: i + 1 }));
-    input.setAttribute('maxlength', String(MAX_TASK_NAME_LENGTH));
-    input.value = tasks[i] || '';
-    input.addEventListener('input', (e) => {
-      setTaskAt(i, e.target.value.slice(0, MAX_TASK_NAME_LENGTH));
-    });
-    slot.appendChild(input);
-
-    const btn = document.createElement('button');
-    btn.className = 'btn-start-direct';
-    btn.innerText = tr('startDirect');
-    btn.addEventListener('click', () => {
-      initAudio();
-      const taskName = input.value.trim().slice(0, MAX_TASK_NAME_LENGTH) || tr('unnamedTask');
-      startFocus(taskName);
-    });
-    slot.appendChild(btn);
-    container.appendChild(slot);
-  }
+  setLastFocusedElement(null);
 }
 
-function startRoulette() {
-  const validTasks = getValidTasks();
-  if (validTasks.length === 0) {
-    alert(tr('needTaskAlert'));
-    return;
-  }
+// === src/recovery-ui.js ===
+let isRecoveryMode = false;
+let lastTaskName = '';
+let lastPauseType = '';
+let recoveryPausedAt = null;
 
-  const btnId = isRecoveryMode ? 'recovery-roulette-btn' : 'btn-roulette';
-  const rouletteBtn = document.getElementById(btnId);
-  const originalText = rouletteBtn.innerText;
-  rouletteBtn.disabled = true;
+let _recOnStartFocus = null;
+let _recOnFlashScreen = null;
+let _recOnUpdateRecoveryAcc = null;
 
-  let counter = 0;
-  rouletteIntervalId = setInterval(() => {
-    if (rouletteIntervalId === null) return;
-    rouletteBtn.innerText = validTasks[Math.floor(Math.random() * validTasks.length)];
-    counter++;
-
-    if (counter > 15) {
-      clearInterval(rouletteIntervalId);
-      rouletteIntervalId = null;
-      const selected = validTasks[Math.floor(Math.random() * validTasks.length)];
-      rouletteBtn.innerText = originalText;
-      rouletteBtn.disabled = false;
-      startFocus(selected);
-    }
-  }, 60);
+function setRecoveryCallbacks({ onStartFocus, onFlashScreen, onUpdateRecoveryAcc }) {
+  _recOnStartFocus = onStartFocus;
+  _recOnFlashScreen = onFlashScreen;
+  _recOnUpdateRecoveryAcc = onUpdateRecoveryAcc;
 }
 
-function switchScreen(screenId) {
-  document.querySelectorAll('.screen').forEach((screen) => screen.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
+function getIsRecoveryMode() { return isRecoveryMode; }
+function setIsRecoveryMode(value) { isRecoveryMode = value; }
+function getLastTaskName() { return lastTaskName; }
 
-  setTimeout(() => {
-    if (screenId === 'focus-screen') {
-      document.getElementById('focus-timer-display').focus();
-    } else if (screenId === 'main-screen') {
-      if (isRecoveryMode) {
-        const resumeBtn = document.getElementById('btn-resume-last');
-        if (resumeBtn) resumeBtn.focus();
-      } else {
-        const firstInput = document.querySelector('.task-slot input');
-        if (firstInput) firstInput.focus();
-      }
-    }
-  }, 100);
+function setRecoveryState({ taskName, pauseType, pausedAt }) {
+  isRecoveryMode = true;
+  lastTaskName = taskName;
+  lastPauseType = pauseType;
+  recoveryPausedAt = pausedAt;
 }
 
-function startFocus(taskName) {
-  const wasRecovery = isRecoveryMode;
+function clearRecoveryState() {
   isRecoveryMode = false;
-
-  if (wasRecovery && taskName) {
-    const idx = getTasks().indexOf(taskName);
-    if (idx > 0) {
-      reorderTask(idx, 0);
-    }
-  }
-
-  const focusStartedAt = Date.now();
-  document.getElementById('focus-task-display').innerText = taskName;
-  document.getElementById('focus-timer-display').innerText = '00:00';
-  updateFocusAccumulatedDisplay(0);
-  updateFocusScreenTranslations();
-  switchScreen('focus-screen');
-
-  if (wasRecovery) {
-    flashScreen();
-  }
-  if (getSetting('soundEnabled')) playBeep('start');
-
-  clearActiveState();
-  saveActiveState({ status: 'focus', taskName, focusStartedAt });
-  clearAllIntervals();
-  startFocusTimer(taskName, focusStartedAt, handleFocusTimerTick, handleFocusMidnight);
-}
-
-function handleFocusTimerTick(elapsed) {
-  document.getElementById('focus-timer-display').innerText = formatElapsedTime(elapsed);
-  updateFocusAccumulatedDisplay(elapsed);
-  if (getSetting('milestoneEnabled')) handleFocusMilestone(elapsed);
-}
-
-function handleFocusMidnight() {
-  saveActiveState({ status: 'focus', taskName: getCurrentTaskName(), focusStartedAt: getFocusStartTime() });
-  showMilestoneMessage('日付が変わりました');
+  lastTaskName = '';
+  lastPauseType = '';
+  recoveryPausedAt = null;
 }
 
 function updatePauseElapsedDisplay(elapsed) {
@@ -2873,55 +2978,7 @@ function handlePauseWarning() {
   const el = document.getElementById('pause-elapsed-value');
   if (!el || el.classList.contains('over5')) return;
   el.classList.add('over5');
-  flashScreen();
-}
-
-function pauseAs(type) {
-  const endedAt = Date.now();
-  const startedAt = getFocusStartTime();
-  const taskName = getCurrentTaskName();
-  const seconds = Math.round((endedAt - startedAt) / 1000);
-  saveFocusSegment(taskName, startedAt, endedAt, seconds);
-  invalidateFocusTimeCache();
-  clearAllIntervals();
-
-  isRecoveryMode = true;
-  lastTaskName = taskName;
-  lastPauseType = type;
-  recoveryPausedAt = Date.now();
-
-  clearActiveState();
-  saveActiveState({ status: 'recovery', taskName, pauseType: type, pausedAt: recoveryPausedAt });
-  renderMainScreen();
-  switchScreen('main-screen');
-}
-
-function finishFocus() {
-  const endedAt = Date.now();
-  const startedAt = getFocusStartTime();
-  const taskName = getCurrentTaskName();
-  const seconds = Math.round((endedAt - startedAt) / 1000);
-  saveFocusSegment(taskName, startedAt, endedAt, seconds);
-  invalidateFocusTimeCache();
-  clearAllIntervals();
-  clearActiveState();
-  showSummary();
-}
-
-function renderMainScreen() {
-  const normalSection = document.getElementById('normal-section');
-  const recoverySection = document.getElementById('recovery-section');
-
-  if (isRecoveryMode) {
-    normalSection.style.display = 'none';
-    recoverySection.style.display = 'flex';
-    renderRecoverySection();
-  } else {
-    normalSection.style.display = '';
-    recoverySection.style.display = 'none';
-    renderTaskSlots();
-    updateMainAccumulatedDisplay();
-  }
+  if (_recOnFlashScreen) _recOnFlashScreen();
 }
 
 function renderRecoverySection() {
@@ -2942,23 +2999,22 @@ function renderRecoverySection() {
   resumeBtn.innerText = tr('resumeLastTask', { task: lastTaskName });
   resumeBtn.addEventListener('click', () => {
     initAudio();
-    startFocus(lastTaskName);
+    if (_recOnStartFocus) _recOnStartFocus(lastTaskName);
   });
   resumeArea.appendChild(resumeBtn);
 
   const tasksArea = document.getElementById('recovery-tasks-area');
   tasksArea.innerHTML = '';
-  getValidTasks()
-    .forEach((name) => {
-      const btn = document.createElement('button');
-      btn.className = 'btn-task-recovery';
-      btn.innerText = name;
-      btn.addEventListener('click', () => {
-        initAudio();
-        startFocus(name);
-      });
-      tasksArea.appendChild(btn);
+  getValidTasks().forEach((name) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-task-recovery';
+    btn.innerText = name;
+    btn.addEventListener('click', () => {
+      initAudio();
+      if (_recOnStartFocus) _recOnStartFocus(name);
     });
+    tasksArea.appendChild(btn);
+  });
 
   const rouletteBtn = document.getElementById('recovery-roulette-btn');
   rouletteBtn.onclick = () => {
@@ -2966,18 +3022,87 @@ function renderRecoverySection() {
     startRoulette();
   };
 
-  updateRecoveryAccumulatedDisplay();
+  if (_recOnUpdateRecoveryAcc) _recOnUpdateRecoveryAcc();
   startPauseTimer(recoveryPausedAt, updatePauseElapsedDisplay, handlePauseWarning);
 }
 
 function exitRecovery() {
-  isRecoveryMode = false;
-  lastTaskName = '';
-  lastPauseType = '';
-  recoveryPausedAt = null;
+  clearRecoveryState();
   stopPauseTimer();
   clearActiveState();
   showSummary();
+}
+
+// === src/focus-session.js ===
+let _fsOnSwitchScreen = null;
+let _fsOnClearAllIntervals = null;
+let _fsOnRenderMain = null;
+
+function setFocusSessionCallbacks({ onSwitchScreen, onClearAllIntervals, onRenderMain }) {
+  _fsOnSwitchScreen = onSwitchScreen;
+  _fsOnClearAllIntervals = onClearAllIntervals;
+  _fsOnRenderMain = onRenderMain;
+}
+
+let _fsCachedTodayFocusTime = -1;
+let _fsCachedTodayKey = '';
+
+window.addEventListener('focus-time-cache-invalidated', () => {
+  _fsCachedTodayKey = '';
+  _fsCachedTodayFocusTime = -1;
+});
+
+function getTodayLogs() {
+  const logs = loadLogs();
+  const todayKey = getTodayKey();
+  return logs[todayKey] || [];
+}
+
+function getCachedTodayFocusTime() {
+  const todayKey = getTodayKey();
+  if (_fsCachedTodayKey !== todayKey) {
+    _fsCachedTodayKey = todayKey;
+    _fsCachedTodayFocusTime = getTotalFocusTime(getTodayLogs());
+  }
+  return _fsCachedTodayFocusTime;
+}
+
+function updateMainAccumulatedDisplay() {
+  const el = document.getElementById('main-acc-value-display');
+  if (!el) return;
+  const totalSeconds = getCachedTodayFocusTime();
+  el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
+}
+
+function updateFocusAccumulatedDisplay(currentElapsed = 0) {
+  const el = document.getElementById('focus-acc-value-display');
+  if (!el) return;
+  const totalSeconds = getCachedTodayFocusTime() + currentElapsed;
+  el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
+}
+
+function updateRecoveryAccumulatedDisplay() {
+  const el = document.getElementById('recovery-acc-value');
+  if (!el) return;
+  const totalSeconds = getCachedTodayFocusTime();
+  el.innerText = totalSeconds > 0 ? uiDuration(totalSeconds) : '—';
+}
+
+function flashScreen() {
+  const overlay = document.getElementById('flash-overlay');
+  overlay.classList.remove('flash-red');
+  void overlay.offsetWidth;
+  overlay.classList.add('flash-red');
+  setTimeout(() => overlay.classList.remove('flash-red'), FLASH_DURATION_MS);
+}
+
+function showMilestoneMessage(text) {
+  const el = document.getElementById('milestone-message');
+  el.classList.remove('show');
+  el.innerText = text;
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), MILESTONE_MESSAGE_DURATION_MS);
 }
 
 function handleFocusMilestone(elapsedSeconds) {
@@ -2994,118 +3119,165 @@ function handleFocusMilestone(elapsedSeconds) {
   }
 }
 
-function flashScreen() {
-  const overlay = document.getElementById('flash-overlay');
-  overlay.classList.remove('flash-red');
-  void overlay.offsetWidth;
-  overlay.classList.add('flash-red');
-  setTimeout(() => overlay.classList.remove('flash-red'), 1900);
+function handleFocusTimerTick(elapsed) {
+  document.getElementById('focus-timer-display').innerText = formatElapsedTime(elapsed);
+  updateFocusAccumulatedDisplay(elapsed);
+  if (getSetting('milestoneEnabled')) handleFocusMilestone(elapsed);
 }
 
-function showMilestoneMessage(text) {
-  const el = document.getElementById('milestone-message');
-  el.classList.remove('show');
-  el.innerText = text;
-  void el.offsetWidth;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3600);
+function handleFocusMidnight() {
+  saveActiveState({ status: 'focus', taskName: getCurrentTaskName(), focusStartedAt: getFocusStartTime() });
+  showMilestoneMessage('日付が変わりました');
 }
 
-function getTodayLogs() {
-  const logs = loadLogs();
-  const todayKey = getTodayKey();
-  return logs[todayKey] || [];
-}
+function startFocus(taskName) {
+  const wasRecovery = getIsRecoveryMode();
+  setIsRecoveryMode(false);
 
-/**
- * 今日の累積集中時間（秒）をキャッシュ付きで返す
- */
-function getCachedTodayFocusTime() {
-  const todayKey = getTodayKey();
-  if (cachedTodayKey !== todayKey) {
-    // 日付が変わったらキャッシュをリセット
-    cachedTodayKey = todayKey;
-    cachedTodayFocusTime = getTotalFocusTime(getTodayLogs());
+  if (wasRecovery && taskName) {
+    const idx = getTasks().indexOf(taskName);
+    if (idx > 0) reorderTask(idx, 0);
   }
-  return cachedTodayFocusTime;
+
+  const focusStartedAt = Date.now();
+  document.getElementById('focus-task-display').innerText = taskName;
+  document.getElementById('focus-timer-display').innerText = '00:00';
+  updateFocusAccumulatedDisplay(0);
+  updateFocusScreenTranslations();
+  if (_fsOnSwitchScreen) _fsOnSwitchScreen('focus-screen');
+
+  if (wasRecovery) flashScreen();
+  if (getSetting('soundEnabled')) playBeep('start');
+
+  clearActiveState();
+  saveActiveState({ status: 'focus', taskName, focusStartedAt });
+  if (_fsOnClearAllIntervals) _fsOnClearAllIntervals();
+  startFocusTimer(taskName, focusStartedAt, handleFocusTimerTick, handleFocusMidnight);
 }
 
-function showSummary() {
-  setLastFocusedElement(document.activeElement);
-  const todayLogs = getTodayLogs();
-  const container = document.getElementById('summary-content');
+function pauseAs(type) {
+  const endedAt = Date.now();
+  const startedAt = getFocusStartTime();
+  const taskName = getCurrentTaskName();
+  const seconds = Math.round((endedAt - startedAt) / 1000);
+  saveFocusSegment(taskName, startedAt, endedAt, seconds);
+  invalidateFocusTimeCache();
+  if (_fsOnClearAllIntervals) _fsOnClearAllIntervals();
 
-  if (todayLogs.length === 0) {
-    container.innerHTML = '<div class="summary-empty">' + tr('summaryEmpty') + '</div>';
-  } else {
-    const totalSeconds = getTotalFocusTime(todayLogs);
-    const longestSeconds = getLongestFocusSegment(todayLogs);
-    const startCount = getStartCount(todayLogs);
-    const bestSession = getBestSession(todayLogs);
-    const taskRanking = getTaskTimeRanking(todayLogs);
-    const firstStartTime = getFirstStartTime(todayLogs);
-    const inMorning = didStartInMorning(todayLogs);
+  const pausedAt = Date.now();
+  setRecoveryState({ taskName, pauseType: type, pausedAt });
 
-    let html = '';
-    html += '<div class="summary-hero">';
-    html += '<div class="summary-hero-label">' + tr('summaryHero') + '</div>';
-    html += '<div class="summary-hero-value">' + uiDuration(totalSeconds) + '</div>';
-    html += '</div>';
+  clearActiveState();
+  saveActiveState({ status: 'recovery', taskName, pauseType: type, pausedAt });
+  if (_fsOnRenderMain) _fsOnRenderMain();
+  if (_fsOnSwitchScreen) _fsOnSwitchScreen('main-screen');
+}
 
-    html += '<div class="summary-stats">';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryFirstStart') + '</div><div class="summary-stat-value">' + firstStartTime + '</div></div>';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryMorningStart') + '</div><div class="summary-stat-value ' + (inMorning ? 'summary-stat-success' : 'summary-stat-muted') + '">' + (inMorning ? tr('summaryMorningDone') : tr('summaryMorningMiss')) + '</div></div>';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryLongest') + '</div><div class="summary-stat-value">' + uiDuration(longestSeconds) + '</div></div>';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryStartCount') + '</div><div class="summary-stat-value">' + tr('summaryStartCountValue', { count: startCount }) + '</div></div>';
-    html += '</div>';
+function finishFocus() {
+  const endedAt = Date.now();
+  const startedAt = getFocusStartTime();
+  const taskName = getCurrentTaskName();
+  const seconds = Math.round((endedAt - startedAt) / 1000);
+  saveFocusSegment(taskName, startedAt, endedAt, seconds);
+  invalidateFocusTimeCache();
+  if (_fsOnClearAllIntervals) _fsOnClearAllIntervals();
+  clearActiveState();
+  showSummary();
+}
 
-    if (bestSession) {
-      html += '<div class="summary-section">';
-      html += '<div class="summary-section-title">' + tr('summaryBestSession') + '</div>';
-      html += '<div class="best-session-display">';
-      html += '<span class="task-name">' + escapeHtml(bestSession.task) + '</span> ';
-      html += uiDuration(bestSession.seconds);
-      html += '</div></div>';
+function checkActiveState() {
+  const data = localStorage.getItem(STORAGE_KEYS.activeState);
+  if (!data) return;
+
+  let raw;
+  try {
+    raw = JSON.parse(data);
+  } catch (e) {
+    clearActiveState();
+    return;
+  }
+
+  const parsed = parseActiveState(raw);
+  if (!parsed) {
+    clearActiveState();
+    return;
+  }
+
+  if (parsed.kind === 'recovery') {
+    setRecoveryState({ taskName: parsed.taskName, pauseType: parsed.pauseType, pausedAt: parsed.pausedAt });
+    if (_fsOnRenderMain) _fsOnRenderMain();
+    return;
+  }
+
+  if (_fsOnRenderMain) _fsOnRenderMain();
+  if (_fsOnSwitchScreen) _fsOnSwitchScreen('main-screen');
+
+  const banner = document.getElementById('recovery-banner');
+  const text = document.getElementById('recovery-text');
+  const elapsed = Math.floor((Date.now() - parsed.focusStartedAt) / 1000);
+  text.innerText = tr('recoveryBannerActive', { task: parsed.taskName, elapsed: formatElapsedTime(elapsed) });
+  banner.classList.add('active');
+
+  document.getElementById('btn-recovery-resume').onclick = () => {
+    banner.classList.remove('active');
+    initAudio();
+    const elapsedSeconds = Math.floor((Date.now() - parsed.focusStartedAt) / 1000);
+    document.getElementById('focus-task-display').innerText = parsed.taskName;
+    updateFocusAccumulatedDisplay(elapsedSeconds);
+    if (_fsOnSwitchScreen) _fsOnSwitchScreen('focus-screen');
+    if (_fsOnClearAllIntervals) _fsOnClearAllIntervals();
+    startFocusTimer(parsed.taskName, parsed.focusStartedAt, handleFocusTimerTick, handleFocusMidnight);
+    setLastMilestone(Math.floor(elapsedSeconds / MILESTONE_INTERVAL) * MILESTONE_INTERVAL);
+    saveActiveState({ status: 'focus', taskName: parsed.taskName, focusStartedAt: parsed.focusStartedAt });
+    handleFocusTimerTick(elapsedSeconds);
+  };
+
+  document.getElementById('btn-recovery-discard').onclick = () => {
+    banner.classList.remove('active');
+    const endedAt = Date.now();
+    const seconds = Math.round((endedAt - parsed.focusStartedAt) / 1000);
+    if (seconds > 0) {
+      saveFocusSegment(parsed.taskName, parsed.focusStartedAt, endedAt, seconds);
+      invalidateFocusTimeCache();
     }
-
-    if (taskRanking.length > 0) {
-      html += '<div class="summary-section">';
-      html += '<div class="summary-section-title">' + tr('summaryTaskRanking') + '</div>';
-      taskRanking.forEach((item, index) => {
-        const medals = ['🥇', '🥈', '🥉'];
-        const position = index < medals.length ? medals[index] : String(index + 1) + '.';
-        html += '<div class="ranking-row">';
-        html += '<span class="ranking-position">' + position + '</span>';
-        html += '<span class="ranking-task">' + escapeHtml(item.task) + '</span>';
-        html += '<span class="ranking-time">' + uiDuration(item.seconds) + '</span>';
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-
-    container.innerHTML = html;
-  }
-
-  const summaryModal = document.getElementById('summary-modal');
-  summaryModal.classList.add('active');
-  setCurrentTrapCleanup(trapFocus(summaryModal));
-  document.getElementById('btn-close-summary').focus();
+    clearActiveState();
+  };
 }
 
-function closeSummary() {
-  clearTrapCleanup();
-  document.getElementById('summary-modal').classList.remove('active');
-  isRecoveryMode = false;
-  renderMainScreen();
-  switchScreen('main-screen');
+// === src/app.js ===
+function switchScreen(screenId) {
+  document.querySelectorAll('.screen').forEach((screen) => screen.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
 
-  const lastFocusedElement = getLastFocusedElement();
-  if (lastFocusedElement && lastFocusedElement.isConnected) {
-    lastFocusedElement.focus();
+  setTimeout(() => {
+    if (screenId === 'focus-screen') {
+      document.getElementById('focus-timer-display').focus();
+    } else if (screenId === 'main-screen') {
+      if (getIsRecoveryMode()) {
+        const resumeBtn = document.getElementById('btn-resume-last');
+        if (resumeBtn) resumeBtn.focus();
+      } else {
+        const firstInput = document.querySelector('.task-slot input');
+        if (firstInput) firstInput.focus();
+      }
+    }
+  }, SCREEN_SWITCH_DELAY_MS);
+}
+
+function renderMainScreen() {
+  const normalSection = document.getElementById('normal-section');
+  const recoverySection = document.getElementById('recovery-section');
+
+  if (getIsRecoveryMode()) {
+    normalSection.style.display = 'none';
+    recoverySection.style.display = 'flex';
+    renderRecoverySection();
   } else {
-    document.getElementById('btn-show-summary').focus();
+    normalSection.style.display = '';
+    recoverySection.style.display = 'none';
+    renderTaskSlots();
+    updateMainAccumulatedDisplay();
   }
-  setLastFocusedElement(null);
 }
 
 function resetLog() {
@@ -3136,123 +3308,10 @@ async function handleImportTodoTxtChange(event) {
   alert(tr('importTodoTxtDone', { count: getTaskCount() }));
 }
 
-function showSettings() {
-  setLastFocusedElement(document.activeElement);
-  document.getElementById('setting-milestone').checked = getSetting('milestoneEnabled');
-  document.getElementById('setting-sound').checked = getSetting('soundEnabled');
-  const checkedThemeRadio = document.querySelector(`input[name="setting-theme"][value="${getSetting('themeMode')}"]`);
-  if (checkedThemeRadio) checkedThemeRadio.checked = true;
-  const checkedLanguageRadio = document.querySelector(`input[name="setting-language"][value="${getSetting('language')}"]`);
-  if (checkedLanguageRadio) checkedLanguageRadio.checked = true;
-
-  const settingsModal = document.getElementById('settings-modal');
-  settingsModal.classList.add('active');
-  setCurrentTrapCleanup(trapFocus(settingsModal));
-  const firstRadio = document.querySelector('input[name="setting-theme"]:checked') || document.getElementById('setting-milestone');
-  firstRadio.focus();
-}
-
-function handleThemePreview() {
-  const previewTheme = document.querySelector('input[name="setting-theme"]:checked')?.value || getSetting('themeMode');
-  applyTheme(previewTheme);
-}
-
-function handleLanguagePreview() {
-  const previewLanguage = document.querySelector('input[name="setting-language"]:checked')?.value || getSetting('language');
-  applyLanguage(previewLanguage);
-}
-
-function handleSaveSettings() {
-  clearTrapCleanup();
-  const newSettings = {
-    milestoneEnabled: document.getElementById('setting-milestone').checked,
-    soundEnabled: document.getElementById('setting-sound').checked,
-    themeMode: document.querySelector('input[name="setting-theme"]:checked')?.value || 'system',
-    language: document.querySelector('input[name="setting-language"]:checked')?.value || 'ja',
-  };
-  updateSettings(newSettings);
-  applyTheme(newSettings.themeMode);
-  applyLanguage(newSettings.language);
-  document.getElementById('settings-modal').classList.remove('active');
-
-  const lastFocusedElement = getLastFocusedElement();
-  if (lastFocusedElement && lastFocusedElement.isConnected) {
-    lastFocusedElement.focus();
-  } else {
-    document.getElementById('btn-show-settings').focus();
-  }
-  setLastFocusedElement(null);
-}
-
-function checkActiveState() {
-  const data = localStorage.getItem(STORAGE_KEYS.activeState);
-  if (!data) return;
-
-  let raw;
-  try {
-    raw = JSON.parse(data);
-  } catch (e) {
-    clearActiveState();
-    return;
-  }
-
-  const parsed = parseActiveState(raw);
-  if (!parsed) {
-    clearActiveState();
-    return;
-  }
-
-  if (parsed.kind === 'recovery') {
-    isRecoveryMode = true;
-    lastTaskName = parsed.taskName;
-    lastPauseType = parsed.pauseType;
-    recoveryPausedAt = parsed.pausedAt;
-    renderMainScreen();
-    return;
-  }
-
-  renderMainScreen();
-  switchScreen('main-screen');
-
-  const banner = document.getElementById('recovery-banner');
-  const text = document.getElementById('recovery-text');
-  const elapsed = Math.floor((Date.now() - parsed.focusStartedAt) / 1000);
-  text.innerText = tr('recoveryBannerActive', { task: parsed.taskName, elapsed: formatElapsedTime(elapsed) });
-  banner.classList.add('active');
-
-  document.getElementById('btn-recovery-resume').onclick = () => {
-    banner.classList.remove('active');
-    initAudio();
-    const elapsedSeconds = Math.floor((Date.now() - parsed.focusStartedAt) / 1000);
-    document.getElementById('focus-task-display').innerText = parsed.taskName;
-    updateFocusAccumulatedDisplay(elapsedSeconds);
-    switchScreen('focus-screen');
-    clearAllIntervals();
-    startFocusTimer(parsed.taskName, parsed.focusStartedAt, handleFocusTimerTick, handleFocusMidnight);
-    setLastMilestone(Math.floor(elapsedSeconds / MILESTONE_INTERVAL) * MILESTONE_INTERVAL);
-    saveActiveState({ status: 'focus', taskName: parsed.taskName, focusStartedAt: parsed.focusStartedAt });
-    handleFocusTimerTick(elapsedSeconds);
-  };
-
-  document.getElementById('btn-recovery-discard').onclick = () => {
-    banner.classList.remove('active');
-    const endedAt = Date.now();
-    const seconds = Math.round((endedAt - parsed.focusStartedAt) / 1000);
-    if (seconds > 0) {
-      saveFocusSegment(parsed.taskName, parsed.focusStartedAt, endedAt, seconds);
-      invalidateFocusTimeCache();
-    }
-    clearActiveState();
-  };
-}
-
 function clearAllIntervals() {
   stopFocusTimer();
   stopPauseTimer();
-  if (rouletteIntervalId) {
-    clearInterval(rouletteIntervalId);
-    rouletteIntervalId = null;
-  }
+  clearRouletteInterval();
 }
 
 function handleGlobalKeydown(e) {
@@ -3282,6 +3341,13 @@ function handleGlobalKeydown(e) {
 function initApp() {
   if (isAppInitialized()) return;
   setAppInitialized(true);
+
+  setTaskUICallbacks({ onStartFocus: startFocus });
+  setRouletteCallbacks({ onStartFocus: startFocus, getIsRecoveryMode });
+  setSummaryCallbacks({ onRenderMain: renderMainScreen, onSwitchScreen: switchScreen, onResetRecovery: () => setIsRecoveryMode(false) });
+  setSettingsCallbacks({ onRenderMain: renderMainScreen });
+  setRecoveryCallbacks({ onStartFocus: startFocus, onFlashScreen: flashScreen, onUpdateRecoveryAcc: updateRecoveryAccumulatedDisplay });
+  setFocusSessionCallbacks({ onSwitchScreen: switchScreen, onClearAllIntervals: clearAllIntervals, onRenderMain: renderMainScreen });
 
   initSettings();
   applyTheme(getSetting('themeMode'));
