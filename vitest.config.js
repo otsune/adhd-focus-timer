@@ -6,5 +6,11 @@ export default defineConfig({
     globals: true,
     include: ['tests/**/*.test.js'],
     setupFiles: ['./tests/setup.js'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary', 'html'],
+      include: ['src/**/*.js'],
+      exclude: ['src/constants.js', 'node_modules/**', 'tests/**'],
+    },
   },
 });

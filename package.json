@@ -7,10 +7,12 @@
     "build": "node build.js",
     "dev": "vite",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "node e2e/run-all.js"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
     "jsdom": "^29.0.1",
     "vite": "^7.1.0",
     "vitest": "^3.2.1"
