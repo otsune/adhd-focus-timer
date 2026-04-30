@@ -1,22 +1,24 @@
 import { formatElapsedTime, formatDuration, escapeHtml } from './utils.js';
-import { getTodayKey, getNext4AM } from './date-utils.js';
+import { t, TRANSLATIONS } from './i18n.js';
+import { applyTheme, getSystemThemeMedia } from './theme.js';
+import { setText, setAttr, getFocusableElements, trapFocus } from './ui.js';
+import { initAudio, getAudioContext, playBeep } from './audio.js';
+import { initSettings, getSettings, updateSettings, setSetting, getSetting, isAppInitialized, setAppInitialized, getLastFocusedElement, setLastFocusedElement, getCurrentTrapCleanup, setCurrentTrapCleanup, clearTrapCleanup } from './state.js';
+import { getTasks, getValidTasks, getTaskAt, setTaskAt, addNewTask, removeTaskAt, getTaskCount, canAddTask, setTasks, reorderTask } from './tasks.js';
+import { startFocusTimer, stopFocusTimer, getFocusElapsed, getFocusStartTime, getCurrentTaskName, getLastMilestone, setLastMilestone, isTimerRunning, getPauseElapsed, startPauseTimer, stopPauseTimer } from './timer.js';
+import { downloadFile, exportAsJSON, exportAsCSV, exportAsTodoTxt, importFromTodoTxt } from './export.js';
+import { getTodayKey } from './date-utils.js';
 import {
   STORAGE_KEYS,
   loadLogs,
-  saveLogs,
   loadTasks,
-  saveTasks,
-  loadSettings,
-  saveSettings,
+  saveLogs,
   saveActiveState,
   clearActiveState,
   saveFocusSegment,
   parseActiveState,
+  invalidateFocusTimeCache,
 } from './storage.js';
-import {
-  serializeTasksToTodoTxt,
-  extractActiveTasksFromTodoTxt,
-} from './todotxt.js';
 import { applyTasksFromHash } from './url-tasks.js';
 import {
   getTotalFocusTime,
@@ -28,223 +30,47 @@ import {
   didStartInMorning,
 } from './stats.js';
 import { MILESTONE_INTERVAL, getMilestoneAction } from './milestone.js';
+import { MAX_TASKS, MAX_TASK_NAME_LENGTH } from './constants.js';
 
-const MAX_TASKS = 6;
-const MAX_TASK_NAME_LENGTH = 200;
-const TRANSLATIONS = {
-  ja: {
-    appTitle: 'ADHD Focus Timer',
-    resume: '再開',
-    discard: '破棄',
-    addTask: '＋ タスクを追加 (最大6個)',
-    addTaskMax: '最大数 (6個) に達しています',
-    todaySummary: '📊 今日の成果',
-    settings: '⚙️ 設定',
-    rouletteStart: '決められない時（開始）',
-    accumulatedToday: '今日の累積集中',
-    paused: '中断中',
-    todayFocus: '今日の集中',
-    random: 'ランダム',
-    finish: '終了',
-    focusAria: '集中時間',
-    away: '離席',
-    meal: '食事',
-    awayAria: '一時中断: 離席',
-    mealAria: '一時中断: 食事',
-    finishFocusAria: '集中を終了',
-    close: '閉じる',
-    resetLog: 'ログをリセット',
-    theme: 'テーマ',
-    system: 'システム',
-    light: 'ライト',
-    dark: 'ダーク',
-    language: '言語',
-    languageGroup: '言語',
-    themeGroup: 'テーマ',
-    japanese: '日本語',
-    english: 'English',
-    milestone: '節目通知',
-    sound: '音通知',
-    saveAndClose: '保存して閉じる',
-    exportJson: '📥 JSON エクスポート',
-    exportCsv: '📥 CSV エクスポート',
-    exportTodoTxt: '📥 todo.txt エクスポート',
-    importTodoTxt: '📤 todo.txt インポート',
-    taskFallback: 'タスク',
-    taskPlaceholder: 'タスクを入力...',
-    taskInputAria: 'タスク{index}入力',
-    taskRemove: 'タスクを削除',
-    startDirect: '開始 ▶',
-    unnamedTask: '名称未設定タスク',
-    needTaskAlert: '少なくとも1つタスクを入力してください！',
-    undoToast: '「{task}」を削除',
-    recoveryAway: '🚶 離席中 — 戻ったらタスクを選んで再開しましょう',
-    recoveryMeal: '🍽️ 食事中 — 戻ったらタスクを選んで再開しましょう',
-    recoveryGeneric: '⏸️ 一時中断中 — タスクを選んで再開しましょう',
-    resumeLastTask: '{task} を再開',
-    summaryEmpty: 'まだ記録がありません。<br>タスクを選んで集中を始めましょう。',
-    summaryHero: '累積集中時間',
-    summaryFirstStart: '最初の着手',
-    summaryMorningStart: '午前中に着手',
-    summaryMorningDone: '✓ できた',
-    summaryMorningMiss: '—',
-    summaryLongest: '最長連続',
-    summaryStartCount: '着手回数',
-    summaryStartCountValue: '{count}回',
-    summaryBestSession: '今日のベストセッション',
-    summaryTaskRanking: 'タスク別 累積集中時間',
-    resetConfirm: '今日の集中ログをリセットしますか？',
-    recoveryBannerActive: '集中中の状態が残っています（{task} / {elapsed}経過）',
-    exportJsonName: 'adhd_focus_log_{day}.json',
-    exportCsvName: 'adhd_focus_log_{day}.csv',
-    exportTodoTxtName: 'adhd_focus_tasks_{day}.txt',
-    csvHeader: '日付,タスク名,開始時刻,終了時刻,集中秒数',
-    importTodoTxtEmpty: 'todo.txt から取り込める未完了タスクが見つかりませんでした。',
-    importTodoTxtDone: '{count}件のタスクを読み込みました。',
-  },
-  en: {
-    appTitle: 'ADHD Focus Timer',
-    resume: 'Resume',
-    discard: 'Discard',
-    addTask: '+ Add task (max 6)',
-    addTaskMax: 'Maximum reached (6 tasks)',
-    todaySummary: '📊 Today\'s Summary',
-    settings: '⚙️ Settings',
-    rouletteStart: 'Can\'t decide? Start',
-    accumulatedToday: 'Today\'s total focus',
-    paused: 'Paused',
-    todayFocus: 'Today\'s focus',
-    random: 'Random',
-    finish: 'Finish',
-    focusAria: 'Focus time',
-    away: 'Away',
-    meal: 'Meal',
-    awayAria: 'Pause: away',
-    mealAria: 'Pause: meal',
-    finishFocusAria: 'Finish focus session',
-    close: 'Close',
-    resetLog: 'Reset log',
-    theme: 'Theme',
-    system: 'System',
-    light: 'Light',
-    dark: 'Dark',
-    language: 'Language',
-    languageGroup: 'Language',
-    themeGroup: 'Theme',
-    japanese: 'Japanese',
-    english: 'English',
-    milestone: 'Milestone alerts',
-    sound: 'Sound alerts',
-    saveAndClose: 'Save and close',
-    exportJson: '📥 Export JSON',
-    exportCsv: '📥 Export CSV',
-    exportTodoTxt: '📥 Export todo.txt',
-    importTodoTxt: '📤 Import todo.txt',
-    taskFallback: 'Task',
-    taskPlaceholder: 'Enter a task...',
-    taskInputAria: 'Task {index} input',
-    taskRemove: 'Remove task',
-    startDirect: 'Start ▶',
-    unnamedTask: 'Untitled task',
-    needTaskAlert: 'Please enter at least one task!',
-    undoToast: 'Deleted "{task}"',
-    recoveryAway: '🚶 Away — choose a task to resume when you return',
-    recoveryMeal: '🍽️ Meal break — choose a task to resume when you return',
-    recoveryGeneric: '⏸️ Paused — choose a task to resume',
-    resumeLastTask: 'Resume {task}',
-    summaryEmpty: 'No records yet.<br>Select a task and start focusing.',
-    summaryHero: 'Total focus time',
-    summaryFirstStart: 'First start',
-    summaryMorningStart: 'Started in the morning',
-    summaryMorningDone: '✓ done',
-    summaryMorningMiss: '—',
-    summaryLongest: 'Longest streak',
-    summaryStartCount: 'Starts',
-    summaryStartCountValue: '{count} times',
-    summaryBestSession: 'Best session today',
-    summaryTaskRanking: 'Focus time by task',
-    resetConfirm: 'Reset today\'s focus log?',
-    recoveryBannerActive: 'An active focus state remains ({task} / {elapsed} elapsed)',
-    exportJsonName: 'adhd_focus_log_{day}.json',
-    exportCsvName: 'adhd_focus_log_{day}.csv',
-    exportTodoTxtName: 'adhd_focus_tasks_{day}.txt',
-    csvHeader: 'Date,Task,Start time,End time,Focus seconds',
-    importTodoTxtEmpty: 'No active tasks could be imported from todo.txt.',
-    importTodoTxtDone: 'Imported {count} tasks.',
-  },
-};
-
-let tasks = [''];
-let currentTaskName = '';
-let focusSegmentStartedAt = null;
-let focusIntervalId = null;
-let pauseIntervalId = null;
 let rouletteIntervalId = null;
-let lastNotifiedMilestone = 0;
-let appInitialized = false;
 
 let undoTimeout = null;
 let undoData = null;
 
-let lastFocusedElement = null;
-let currentTrapCleanup = null;
 
 let isRecoveryMode = false;
 let lastTaskName = '';
 let lastPauseType = '';
-let pausedAt = null;
 
-let settings = {
-  milestoneEnabled: true,
-  soundEnabled: true,
-  themeMode: 'system',
-  language: 'ja',
-};
+let recoveryPausedAt = null;
 
-let audioCtx;
-const systemThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
 
 // 累積集中時間のキャッシュ（tickFocusTimer での毎秒計算を削減）
 let cachedTodayFocusTime = -1;
 let cachedTodayKey = '';
 
-function t(key, vars = {}) {
-  const lang = TRANSLATIONS[settings.language] ? settings.language : 'ja';
-  const template = TRANSLATIONS[lang][key] ?? TRANSLATIONS.ja[key] ?? key;
-  return template.replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? ''));
-}
+void getFocusableElements;
+void getAudioContext;
+void getCurrentTrapCleanup;
+void getFocusElapsed;
+void isTimerRunning;
+void getPauseElapsed;
+void downloadFile;
+
+window.addEventListener('focus-time-cache-invalidated', () => {
+  cachedTodayKey = '';
+  cachedTodayFocusTime = -1;
+});
+
+const tr = (key, vars = {}) => t(key, vars, getSetting('language'));
 
 function uiDuration(totalSeconds) {
-  return formatDuration(totalSeconds, settings.language);
-}
-
-function applyTheme(mode) {
-  const resolvedTheme = mode === 'system'
-    ? (systemThemeMedia.matches ? 'light' : 'dark')
-    : mode;
-
-  document.documentElement.dataset.themeMode = mode;
-  document.documentElement.dataset.theme = resolvedTheme;
-}
-
-function setText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
-}
-
-function setHtml(id, html) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = html;
-}
-
-function setAttr(id, name, value) {
-  const el = document.getElementById(id);
-  if (el) el.setAttribute(name, value);
+  return formatDuration(totalSeconds, getSetting('language'));
 }
 
 function applyLanguage(language) {
-  settings.language = TRANSLATIONS[language] ? language : 'ja';
-  document.documentElement.lang = settings.language;
+  setSetting('language', TRANSLATIONS[language] ? language : 'ja');
+  document.documentElement.lang = getSetting('language');
   applyStaticTranslations();
   renderMainScreen();
 
@@ -259,7 +85,7 @@ function applyLanguage(language) {
         const state = JSON.parse(data);
         if (state?.status === 'focus' && state.focusStartedAt) {
           const elapsed = Math.floor((Date.now() - state.focusStartedAt) / 1000);
-          document.getElementById('recovery-text').innerText = t('recoveryBannerActive', {
+          document.getElementById('recovery-text').innerText = tr('recoveryBannerActive', {
             task: state.taskName,
             elapsed: formatElapsedTime(elapsed),
           });
@@ -272,91 +98,55 @@ function applyLanguage(language) {
 }
 
 function applyStaticTranslations() {
-  setText('btn-recovery-resume', t('resume'));
-  setText('btn-recovery-discard', t('discard'));
-  setText('btn-show-summary', t('todaySummary'));
-  setText('btn-show-settings', t('settings'));
-  setText('btn-roulette', t('rouletteStart'));
-  setText('main-acc-label', t('accumulatedToday'));
-  setText('recovery-pause-label', t('paused'));
-  setText('recovery-acc-label', t('todayFocus'));
-  setText('recovery-roulette-btn', t('random'));
-  setText('btn-finish-recovery', t('finish'));
-  setAttr('focus-timer-display', 'aria-label', t('focusAria'));
-  setText('focus-acc-label', t('accumulatedToday'));
-  setText('btn-away', t('away'));
-  setText('btn-meal', t('meal'));
-  setAttr('btn-away', 'aria-label', t('awayAria'));
-  setAttr('btn-meal', 'aria-label', t('mealAria'));
-  setAttr('btn-finish-focus', 'aria-label', t('finishFocusAria'));
-  setText('summary-modal-title', t('todaySummary'));
-  setText('btn-close-summary', t('close'));
-  setText('btn-reset-log', t('resetLog'));
-  setText('settings-modal-title', t('settings'));
-  setText('settings-theme-label', t('theme'));
-  setAttr('settings-theme-group', 'aria-label', t('themeGroup'));
-  setText('theme-option-system', t('system'));
-  setText('theme-option-light', t('light'));
-  setText('theme-option-dark', t('dark'));
-  setText('settings-language-label', t('language'));
-  setAttr('settings-language-group', 'aria-label', t('languageGroup'));
-  setText('language-option-ja', t('japanese'));
-  setText('language-option-en', t('english'));
-  setText('settings-milestone-label', t('milestone'));
-  setAttr('setting-milestone', 'aria-label', t('milestone'));
-  setText('settings-sound-label', t('sound'));
-  setAttr('setting-sound', 'aria-label', t('sound'));
-  setText('btn-save-settings', t('saveAndClose'));
-  setText('btn-export-json', t('exportJson'));
-  setText('btn-export-csv', t('exportCsv'));
-  setText('btn-export-todotxt', t('exportTodoTxt'));
-  setText('btn-import-todotxt', t('importTodoTxt'));
+  setText('btn-recovery-resume', tr('resume'));
+  setText('btn-recovery-discard', tr('discard'));
+  setText('btn-show-summary', tr('todaySummary'));
+  setText('btn-show-settings', tr('settings'));
+  setText('btn-roulette', tr('rouletteStart'));
+  setText('main-acc-label', tr('accumulatedToday'));
+  setText('recovery-pause-label', tr('paused'));
+  setText('recovery-acc-label', tr('todayFocus'));
+  setText('recovery-roulette-btn', tr('random'));
+  setText('btn-finish-recovery', tr('finish'));
+  setAttr('focus-timer-display', 'aria-label', tr('focusAria'));
+  setText('focus-acc-label', tr('accumulatedToday'));
+  setText('btn-away', tr('away'));
+  setText('btn-meal', tr('meal'));
+  setAttr('btn-away', 'aria-label', tr('awayAria'));
+  setAttr('btn-meal', 'aria-label', tr('mealAria'));
+  setAttr('btn-finish-focus', 'aria-label', tr('finishFocusAria'));
+  setText('summary-modal-title', tr('todaySummary'));
+  setText('btn-close-summary', tr('close'));
+  setText('btn-reset-log', tr('resetLog'));
+  setText('settings-modal-title', tr('settings'));
+  setText('settings-theme-label', tr('theme'));
+  setAttr('settings-theme-group', 'aria-label', tr('themeGroup'));
+  setText('theme-option-system', tr('system'));
+  setText('theme-option-light', tr('light'));
+  setText('theme-option-dark', tr('dark'));
+  setText('settings-language-label', tr('language'));
+  setAttr('settings-language-group', 'aria-label', tr('languageGroup'));
+  setText('language-option-ja', tr('japanese'));
+  setText('language-option-en', tr('english'));
+  setText('settings-milestone-label', tr('milestone'));
+  setAttr('setting-milestone', 'aria-label', tr('milestone'));
+  setText('settings-sound-label', tr('sound'));
+  setAttr('setting-sound', 'aria-label', tr('sound'));
+  setText('btn-save-settings', tr('saveAndClose'));
+  setText('btn-export-json', tr('exportJson'));
+  setText('btn-export-csv', tr('exportCsv'));
+  setText('btn-export-todotxt', tr('exportTodoTxt'));
+  setText('btn-import-todotxt', tr('importTodoTxt'));
 }
 
 function updateFocusScreenTranslations() {
-  setText('focus-acc-label', t('accumulatedToday'));
-  setText('btn-away', t('away'));
-  setText('btn-meal', t('meal'));
-  setText('btn-finish-focus', '■ ' + t('finish'));
-  setAttr('btn-away', 'aria-label', t('awayAria'));
-  setAttr('btn-meal', 'aria-label', t('mealAria'));
-  setAttr('btn-finish-focus', 'aria-label', t('finishFocusAria'));
-}
-
-function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-}
-
-function playBeep(type) {
-  if (!audioCtx || !settings.soundEnabled) return;
-
-  const osc = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  osc.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-
-  if (type === 'start') {
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
-    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + 0.3);
-  } else if (type === 'milestone') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(660, audioCtx.currentTime);
-    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
-    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + 0.5);
-  }
+  setText('focus-acc-label', tr('accumulatedToday'));
+  setText('btn-away', tr('away'));
+  setText('btn-meal', tr('meal'));
+  setText('btn-finish-focus', '■ ' + tr('finish'));
+  setAttr('btn-away', 'aria-label', tr('awayAria'));
+  setAttr('btn-meal', 'aria-label', tr('mealAria'));
+  setAttr('btn-finish-focus', 'aria-label', tr('finishFocusAria'));
 }
 
 function updateMainAccumulatedDisplay() {
@@ -384,9 +174,7 @@ function updateRecoveryAccumulatedDisplay() {
 }
 
 function addTask() {
-  if (tasks.length < MAX_TASKS) {
-    tasks.push('');
-    saveTasks(tasks);
+  if (addNewTask()) {
     renderTaskSlots();
     setTimeout(() => {
       const inputs = document.querySelectorAll('.task-slot input');
@@ -396,11 +184,10 @@ function addTask() {
 }
 
 function removeTask(index) {
-  if (tasks.length > 1) {
-    const removedTask = tasks[index];
+  if (getTaskCount() > 1) {
+    const removedTask = getTaskAt(index);
     const removedIndex = index;
-    tasks.splice(index, 1);
-    saveTasks(tasks);
+    removeTaskAt(index);
     renderTaskSlots();
     showUndoToast(removedTask, removedIndex);
   }
@@ -411,8 +198,8 @@ function showUndoToast(task, index) {
   undoData = { task, index };
 
   const toast = document.getElementById('undo-toast');
-  const label = task.trim() || t('taskFallback');
-  document.getElementById('undo-toast-text').innerText = t('undoToast', { task: label });
+  const label = task.trim() || tr('taskFallback');
+  document.getElementById('undo-toast-text').innerText = tr('undoToast', { task: label });
   toast.classList.add('show');
 
   undoTimeout = setTimeout(() => {
@@ -426,8 +213,9 @@ function undoRemoveTask() {
   if (!undoData) return;
   if (undoTimeout) clearTimeout(undoTimeout);
 
-  tasks.splice(undoData.index, 0, undoData.task);
-  saveTasks(tasks);
+  const updatedTasks = getTasks();
+  updatedTasks.splice(undoData.index, 0, undoData.task);
+  setTasks(updatedTasks);
   renderTaskSlots();
   document.getElementById('undo-toast').classList.remove('show');
   undoData = null;
@@ -439,18 +227,19 @@ function renderTaskSlots() {
   container.innerHTML = '';
 
   const addBtn = document.getElementById('btn-add-task');
-  if (tasks.length >= MAX_TASKS) {
+  if (!canAddTask()) {
     addBtn.disabled = true;
-    addBtn.innerText = t('addTaskMax');
+    addBtn.innerText = tr('addTaskMax');
   } else {
     addBtn.disabled = false;
-    addBtn.innerText = t('addTask');
+    addBtn.innerText = tr('addTask');
   }
 
   container.style.gridTemplateColumns = '1fr';
   container.style.maxWidth = '860px';
   container.style.margin = '0 auto 16px auto';
 
+  const tasks = getTasks();
   for (let i = 0; i < tasks.length; i++) {
     const slot = document.createElement('div');
     slot.className = 'task-slot';
@@ -459,30 +248,29 @@ function renderTaskSlots() {
       const removeBtn = document.createElement('button');
       removeBtn.className = 'btn-remove';
       removeBtn.innerHTML = '×';
-      removeBtn.title = t('taskRemove');
-      removeBtn.setAttribute('aria-label', t('taskRemove'));
+      removeBtn.title = tr('taskRemove');
+      removeBtn.setAttribute('aria-label', tr('taskRemove'));
       removeBtn.addEventListener('click', () => removeTask(i));
       slot.appendChild(removeBtn);
     }
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = t('taskPlaceholder');
-    input.setAttribute('aria-label', t('taskInputAria', { index: i + 1 }));
+    input.placeholder = tr('taskPlaceholder');
+    input.setAttribute('aria-label', tr('taskInputAria', { index: i + 1 }));
     input.setAttribute('maxlength', String(MAX_TASK_NAME_LENGTH));
     input.value = tasks[i] || '';
     input.addEventListener('input', (e) => {
-      tasks[i] = e.target.value.slice(0, MAX_TASK_NAME_LENGTH);
-      saveTasks(tasks);
+      setTaskAt(i, e.target.value.slice(0, MAX_TASK_NAME_LENGTH));
     });
     slot.appendChild(input);
 
     const btn = document.createElement('button');
     btn.className = 'btn-start-direct';
-    btn.innerText = t('startDirect');
+    btn.innerText = tr('startDirect');
     btn.addEventListener('click', () => {
       initAudio();
-      const taskName = input.value.trim().slice(0, MAX_TASK_NAME_LENGTH) || t('unnamedTask');
+      const taskName = input.value.trim().slice(0, MAX_TASK_NAME_LENGTH) || tr('unnamedTask');
       startFocus(taskName);
     });
     slot.appendChild(btn);
@@ -491,9 +279,9 @@ function renderTaskSlots() {
 }
 
 function startRoulette() {
-  const validTasks = tasks.map((t) => t.trim()).filter((t) => t !== '');
+  const validTasks = getValidTasks();
   if (validTasks.length === 0) {
-    alert(t('needTaskAlert'));
+    alert(tr('needTaskAlert'));
     return;
   }
 
@@ -543,19 +331,14 @@ function startFocus(taskName) {
   isRecoveryMode = false;
 
   if (wasRecovery && taskName) {
-    const idx = tasks.indexOf(taskName);
+    const idx = getTasks().indexOf(taskName);
     if (idx > 0) {
-      tasks.splice(idx, 1);
-      tasks.unshift(taskName);
-      saveTasks();
+      reorderTask(idx, 0);
     }
   }
 
-  currentTaskName = taskName;
-  focusSegmentStartedAt = Date.now();
-  lastNotifiedMilestone = 0;
-
-  document.getElementById('focus-task-display').innerText = currentTaskName;
+  const focusStartedAt = Date.now();
+  document.getElementById('focus-task-display').innerText = taskName;
   document.getElementById('focus-timer-display').innerText = '00:00';
   updateFocusAccumulatedDisplay(0);
   updateFocusScreenTranslations();
@@ -564,56 +347,68 @@ function startFocus(taskName) {
   if (wasRecovery) {
     flashScreen();
   }
-  playBeep('start');
+  if (getSetting('soundEnabled')) playBeep('start');
 
   clearActiveState();
-  saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
+  saveActiveState({ status: 'focus', taskName, focusStartedAt });
   clearAllIntervals();
-  focusIntervalId = setInterval(tickFocusTimer, 1000);
+  startFocusTimer(taskName, focusStartedAt, handleFocusTimerTick, handleFocusMidnight);
 }
 
-function tickFocusTimer() {
-  const now = Date.now();
-  const next4AM = getNext4AM(focusSegmentStartedAt);
 
-  if (now >= next4AM) {
-    const splitSeconds = Math.round((next4AM - focusSegmentStartedAt) / 1000);
-    saveFocusSegment(currentTaskName, focusSegmentStartedAt, next4AM, splitSeconds);
-    focusSegmentStartedAt = next4AM;
-    lastNotifiedMilestone = 0;
-    invalidateFocusTimeCache();
-    saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
-    showMilestoneMessage('日付が変わりました');
-  }
-
-  const elapsed = Math.floor((now - focusSegmentStartedAt) / 1000);
+function handleFocusTimerTick(elapsed) {
   document.getElementById('focus-timer-display').innerText = formatElapsedTime(elapsed);
   updateFocusAccumulatedDisplay(elapsed);
-  if (settings.milestoneEnabled) handleFocusMilestone(elapsed);
+  if (getSetting('milestoneEnabled')) handleFocusMilestone(elapsed);
+}
+
+function handleFocusMidnight() {
+  saveActiveState({ status: 'focus', taskName: getCurrentTaskName(), focusStartedAt: getFocusStartTime() });
+  showMilestoneMessage('日付が変わりました');
+}
+
+function updatePauseElapsedDisplay(elapsed) {
+  const el = document.getElementById('pause-elapsed-value');
+  if (!el) return;
+  el.innerText = formatElapsedTime(elapsed);
+  if (elapsed < 300) {
+    el.classList.remove('over5');
+  }
+}
+
+function handlePauseWarning() {
+  const el = document.getElementById('pause-elapsed-value');
+  if (!el || el.classList.contains('over5')) return;
+  el.classList.add('over5');
+  flashScreen();
 }
 
 function pauseAs(type) {
   const endedAt = Date.now();
-  const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
-  saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
+  const startedAt = getFocusStartTime();
+  const taskName = getCurrentTaskName();
+  const seconds = Math.round((endedAt - startedAt) / 1000);
+  saveFocusSegment(taskName, startedAt, endedAt, seconds);
   invalidateFocusTimeCache();
   clearAllIntervals();
 
   isRecoveryMode = true;
-  lastTaskName = currentTaskName;
+  lastTaskName = taskName;
   lastPauseType = type;
-  pausedAt = Date.now();
+  recoveryPausedAt = Date.now();
 
   clearActiveState();
-  saveActiveState({ status: 'recovery', taskName: currentTaskName, pauseType: type, pausedAt });
+  saveActiveState({ status: 'recovery', taskName, pauseType: type, pausedAt: recoveryPausedAt });
   renderMainScreen();
   switchScreen('main-screen');
 }
 
 function finishFocus() {
   const endedAt = Date.now();
-  const seconds = Math.round((endedAt - focusSegmentStartedAt) / 1000);
-  saveFocusSegment(currentTaskName, focusSegmentStartedAt, endedAt, seconds);
+  const startedAt = getFocusStartTime();
+  const taskName = getCurrentTaskName();
+  const seconds = Math.round((endedAt - startedAt) / 1000);
+  saveFocusSegment(taskName, startedAt, endedAt, seconds);
   invalidateFocusTimeCache();
   clearAllIntervals();
   clearActiveState();
@@ -639,11 +434,11 @@ function renderMainScreen() {
 function renderRecoverySection() {
   const banner = document.getElementById('recovery-status-banner');
   if (lastPauseType === 'away') {
-    banner.innerText = t('recoveryAway');
+    banner.innerText = tr('recoveryAway');
   } else if (lastPauseType === 'meal') {
-    banner.innerText = t('recoveryMeal');
+    banner.innerText = tr('recoveryMeal');
   } else {
-    banner.innerText = t('recoveryGeneric');
+    banner.innerText = tr('recoveryGeneric');
   }
 
   const resumeArea = document.getElementById('recovery-resume-area');
@@ -651,7 +446,7 @@ function renderRecoverySection() {
   const resumeBtn = document.createElement('button');
   resumeBtn.className = 'btn-resume-main';
   resumeBtn.id = 'btn-resume-last';
-  resumeBtn.innerText = t('resumeLastTask', { task: lastTaskName });
+  resumeBtn.innerText = tr('resumeLastTask', { task: lastTaskName });
   resumeBtn.addEventListener('click', () => {
     initAudio();
     startFocus(lastTaskName);
@@ -660,9 +455,7 @@ function renderRecoverySection() {
 
   const tasksArea = document.getElementById('recovery-tasks-area');
   tasksArea.innerHTML = '';
-  tasks
-    .map((task) => task.trim())
-    .filter((task) => task !== '')
+  getValidTasks()
     .forEach((name) => {
       const btn = document.createElement('button');
       btn.className = 'btn-task-recovery';
@@ -681,66 +474,29 @@ function renderRecoverySection() {
   };
 
   updateRecoveryAccumulatedDisplay();
-  startPauseTimer();
+  startPauseTimer(recoveryPausedAt, updatePauseElapsedDisplay, handlePauseWarning);
 }
 
 function exitRecovery() {
   isRecoveryMode = false;
   lastTaskName = '';
   lastPauseType = '';
-  pausedAt = null;
+  recoveryPausedAt = null;
   stopPauseTimer();
   clearActiveState();
   showSummary();
 }
 
-function startPauseTimer() {
-  stopPauseTimer();
-  tickPauseTimer();
-  pauseIntervalId = setInterval(tickPauseTimer, 1000);
-}
-
-function tickPauseTimer() {
-  if (!pausedAt) return;
-
-  const elapsed = Math.floor((Date.now() - pausedAt) / 1000);
-  const el = document.getElementById('pause-elapsed-value');
-  if (!el) return;
-
-  el.innerText = formatElapsedTime(elapsed);
-  if (elapsed >= 300) {
-    if (!el.classList.contains('over5')) {
-      el.classList.add('over5');
-      flashScreen();
-    }
-  } else {
-    el.classList.remove('over5');
-  }
-}
-
-function stopPauseTimer() {
-  if (pauseIntervalId) {
-    clearInterval(pauseIntervalId);
-    pauseIntervalId = null;
-  }
-
-  const el = document.getElementById('pause-elapsed-value');
-  if (el) {
-    el.classList.remove('over5');
-    el.innerText = '00:00';
-  }
-}
-
 function handleFocusMilestone(elapsedSeconds) {
-  const action = getMilestoneAction(elapsedSeconds, lastNotifiedMilestone);
+  const action = getMilestoneAction(elapsedSeconds, getLastMilestone());
   if (!action) return;
 
-  lastNotifiedMilestone = action.newLastNotified;
+  setLastMilestone(action.newLastNotified);
   if (action.type === 'flash_chime') {
     flashScreen();
-    playBeep('milestone');
+    if (getSetting('soundEnabled')) playBeep('milestone');
   } else if (action.type === 'sound_message') {
-    playBeep('milestone');
+    if (getSetting('soundEnabled')) playBeep('milestone');
     showMilestoneMessage(action.message);
   }
 }
@@ -781,21 +537,13 @@ function getCachedTodayFocusTime() {
   return cachedTodayFocusTime;
 }
 
-/**
- * 累積集中時間のキャッシュを無効化する（ログ変更時に呼び出す）
- */
-function invalidateFocusTimeCache() {
-  cachedTodayKey = '';
-  cachedTodayFocusTime = -1;
-}
-
 function showSummary() {
-  lastFocusedElement = document.activeElement;
+  setLastFocusedElement(document.activeElement);
   const todayLogs = getTodayLogs();
   const container = document.getElementById('summary-content');
 
   if (todayLogs.length === 0) {
-    container.innerHTML = '<div class="summary-empty">' + t('summaryEmpty') + '</div>';
+    container.innerHTML = '<div class="summary-empty">' + tr('summaryEmpty') + '</div>';
   } else {
     const totalSeconds = getTotalFocusTime(todayLogs);
     const longestSeconds = getLongestFocusSegment(todayLogs);
@@ -807,20 +555,20 @@ function showSummary() {
 
     let html = '';
     html += '<div class="summary-hero">';
-    html += '<div class="summary-hero-label">' + t('summaryHero') + '</div>';
+    html += '<div class="summary-hero-label">' + tr('summaryHero') + '</div>';
     html += '<div class="summary-hero-value">' + uiDuration(totalSeconds) + '</div>';
     html += '</div>';
 
     html += '<div class="summary-stats">';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + t('summaryFirstStart') + '</div><div class="summary-stat-value">' + firstStartTime + '</div></div>';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + t('summaryMorningStart') + '</div><div class="summary-stat-value ' + (inMorning ? 'summary-stat-success' : 'summary-stat-muted') + '">' + (inMorning ? t('summaryMorningDone') : t('summaryMorningMiss')) + '</div></div>';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + t('summaryLongest') + '</div><div class="summary-stat-value">' + uiDuration(longestSeconds) + '</div></div>';
-    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + t('summaryStartCount') + '</div><div class="summary-stat-value">' + t('summaryStartCountValue', { count: startCount }) + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryFirstStart') + '</div><div class="summary-stat-value">' + firstStartTime + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryMorningStart') + '</div><div class="summary-stat-value ' + (inMorning ? 'summary-stat-success' : 'summary-stat-muted') + '">' + (inMorning ? tr('summaryMorningDone') : tr('summaryMorningMiss')) + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryLongest') + '</div><div class="summary-stat-value">' + uiDuration(longestSeconds) + '</div></div>';
+    html += '<div class="summary-stat-card"><div class="summary-stat-label">' + tr('summaryStartCount') + '</div><div class="summary-stat-value">' + tr('summaryStartCountValue', { count: startCount }) + '</div></div>';
     html += '</div>';
 
     if (bestSession) {
       html += '<div class="summary-section">';
-      html += '<div class="summary-section-title">' + t('summaryBestSession') + '</div>';
+      html += '<div class="summary-section-title">' + tr('summaryBestSession') + '</div>';
       html += '<div class="best-session-display">';
       html += '<span class="task-name">' + escapeHtml(bestSession.task) + '</span> ';
       html += uiDuration(bestSession.seconds);
@@ -829,7 +577,7 @@ function showSummary() {
 
     if (taskRanking.length > 0) {
       html += '<div class="summary-section">';
-      html += '<div class="summary-section-title">' + t('summaryTaskRanking') + '</div>';
+      html += '<div class="summary-section-title">' + tr('summaryTaskRanking') + '</div>';
       taskRanking.forEach((item, index) => {
         const medals = ['🥇', '🥈', '🥉'];
         const position = index < medals.length ? medals[index] : String(index + 1) + '.';
@@ -847,30 +595,28 @@ function showSummary() {
 
   const summaryModal = document.getElementById('summary-modal');
   summaryModal.classList.add('active');
-  currentTrapCleanup = trapFocus(summaryModal);
+  setCurrentTrapCleanup(trapFocus(summaryModal));
   document.getElementById('btn-close-summary').focus();
 }
 
 function closeSummary() {
-  if (currentTrapCleanup) {
-    currentTrapCleanup();
-    currentTrapCleanup = null;
-  }
+  clearTrapCleanup();
   document.getElementById('summary-modal').classList.remove('active');
   isRecoveryMode = false;
   renderMainScreen();
   switchScreen('main-screen');
 
+  const lastFocusedElement = getLastFocusedElement();
   if (lastFocusedElement && lastFocusedElement.isConnected) {
     lastFocusedElement.focus();
   } else {
     document.getElementById('btn-show-summary').focus();
   }
-  lastFocusedElement = null;
+  setLastFocusedElement(null);
 }
 
 function resetLog() {
-  if (confirm(t('resetConfirm'))) {
+  if (confirm(tr('resetConfirm'))) {
     const logs = loadLogs();
     const todayKey = getTodayKey();
     delete logs[todayKey];
@@ -880,125 +626,69 @@ function resetLog() {
   }
 }
 
-function exportLogsAsJSON() {
-  const logs = loadLogs();
-  const exportData = {
-    version: '1.0',
-    exportedAt: new Date().toISOString(),
-    tasks,
-    settings,
-    logs,
-  };
-
-  const json = JSON.stringify(exportData, null, 2);
-  const todayKey = getTodayKey();
-  downloadFile(json, t('exportJsonName', { day: todayKey }), 'application/json');
-}
-
-function exportLogsAsCSV() {
-  const logs = loadLogs();
-  const rows = [t('csvHeader')];
-
-  for (const [dayKey, segments] of Object.entries(logs)) {
-    for (const seg of segments) {
-      const startStr = new Date(seg.startedAt).toLocaleString('ja-JP');
-      const endStr = new Date(seg.endedAt).toLocaleString('ja-JP');
-      // CSVインジェクション対策: 危険文字で始まる場合シングルクォートでエスケープ
-      const taskName = seg.taskName.replace(/"/g, '""');
-      const taskEscaped = /^[=+\-@]/.test(taskName) ? "'" + taskName : '"' + taskName + '"';
-      rows.push([dayKey, taskEscaped, startStr, endStr, seg.seconds].join(','));
-    }
-  }
-
-  const csv = rows.join('\n');
-  const todayKey = getTodayKey();
-  downloadFile('\uFEFF' + csv, t('exportCsvName', { day: todayKey }), 'text/csv;charset=utf-8');
-}
-
-function exportTasksAsTodoTxt() {
-  const content = serializeTasksToTodoTxt(tasks);
-  const todayKey = getTodayKey();
-  downloadFile(content, t('exportTodoTxtName', { day: todayKey }), 'text/plain;charset=utf-8');
-}
-
-async function handleImportTodoTxt(event) {
+async function handleImportTodoTxtChange(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  const text = await file.text();
-  const importedTasks = extractActiveTasksFromTodoTxt(text)
-    .map((t) => t.slice(0, MAX_TASK_NAME_LENGTH));
+  const importedTasks = await importFromTodoTxt(file);
   event.target.value = '';
 
-  if (importedTasks.length === 0) {
-    alert(t('importTodoTxtEmpty'));
+  if (!importedTasks || importedTasks.length === 0) {
+    alert(tr('importTodoTxtEmpty'));
     return;
   }
 
-  tasks = importedTasks.slice(0, MAX_TASKS);
-  saveTasks(tasks);
+  setTasks(importedTasks);
   renderMainScreen();
-  alert(t('importTodoTxtDone', { count: tasks.length }));
-}
-
-function downloadFile(content, filename, mimeType) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  alert(tr('importTodoTxtDone', { count: getTaskCount() }));
 }
 
 function showSettings() {
-  lastFocusedElement = document.activeElement;
-  document.getElementById('setting-milestone').checked = settings.milestoneEnabled;
-  document.getElementById('setting-sound').checked = settings.soundEnabled;
-  const checkedThemeRadio = document.querySelector(`input[name="setting-theme"][value="${settings.themeMode}"]`);
+  setLastFocusedElement(document.activeElement);
+  document.getElementById('setting-milestone').checked = getSetting('milestoneEnabled');
+  document.getElementById('setting-sound').checked = getSetting('soundEnabled');
+  const checkedThemeRadio = document.querySelector(`input[name="setting-theme"][value="${getSetting('themeMode')}"]`);
   if (checkedThemeRadio) checkedThemeRadio.checked = true;
-  const checkedLanguageRadio = document.querySelector(`input[name="setting-language"][value="${settings.language}"]`);
+  const checkedLanguageRadio = document.querySelector(`input[name="setting-language"][value="${getSetting('language')}"]`);
   if (checkedLanguageRadio) checkedLanguageRadio.checked = true;
 
   const settingsModal = document.getElementById('settings-modal');
   settingsModal.classList.add('active');
-  currentTrapCleanup = trapFocus(settingsModal);
+  setCurrentTrapCleanup(trapFocus(settingsModal));
   const firstRadio = document.querySelector('input[name="setting-theme"]:checked') || document.getElementById('setting-milestone');
   firstRadio.focus();
 }
 
 function handleThemePreview() {
-  const previewTheme = document.querySelector('input[name="setting-theme"]:checked')?.value || settings.themeMode;
+  const previewTheme = document.querySelector('input[name="setting-theme"]:checked')?.value || getSetting('themeMode');
   applyTheme(previewTheme);
 }
 
 function handleLanguagePreview() {
-  const previewLanguage = document.querySelector('input[name="setting-language"]:checked')?.value || settings.language;
+  const previewLanguage = document.querySelector('input[name="setting-language"]:checked')?.value || getSetting('language');
   applyLanguage(previewLanguage);
 }
 
 function handleSaveSettings() {
-  if (currentTrapCleanup) {
-    currentTrapCleanup();
-    currentTrapCleanup = null;
-  }
-  settings.milestoneEnabled = document.getElementById('setting-milestone').checked;
-  settings.soundEnabled = document.getElementById('setting-sound').checked;
-  settings.themeMode = document.querySelector('input[name="setting-theme"]:checked')?.value || 'system';
-  settings.language = document.querySelector('input[name="setting-language"]:checked')?.value || 'ja';
-  saveSettings(settings);
-  applyTheme(settings.themeMode);
-  applyLanguage(settings.language);
+  clearTrapCleanup();
+  const newSettings = {
+    milestoneEnabled: document.getElementById('setting-milestone').checked,
+    soundEnabled: document.getElementById('setting-sound').checked,
+    themeMode: document.querySelector('input[name="setting-theme"]:checked')?.value || 'system',
+    language: document.querySelector('input[name="setting-language"]:checked')?.value || 'ja',
+  };
+  updateSettings(newSettings);
+  applyTheme(newSettings.themeMode);
+  applyLanguage(newSettings.language);
   document.getElementById('settings-modal').classList.remove('active');
 
+  const lastFocusedElement = getLastFocusedElement();
   if (lastFocusedElement && lastFocusedElement.isConnected) {
     lastFocusedElement.focus();
   } else {
     document.getElementById('btn-show-settings').focus();
   }
-  lastFocusedElement = null;
+  setLastFocusedElement(null);
 }
 
 function checkActiveState() {
@@ -1023,7 +713,7 @@ function checkActiveState() {
     isRecoveryMode = true;
     lastTaskName = parsed.taskName;
     lastPauseType = parsed.pauseType;
-    pausedAt = parsed.pausedAt;
+    recoveryPausedAt = parsed.pausedAt;
     renderMainScreen();
     return;
   }
@@ -1034,23 +724,21 @@ function checkActiveState() {
   const banner = document.getElementById('recovery-banner');
   const text = document.getElementById('recovery-text');
   const elapsed = Math.floor((Date.now() - parsed.focusStartedAt) / 1000);
-  text.innerText = t('recoveryBannerActive', { task: parsed.taskName, elapsed: formatElapsedTime(elapsed) });
+  text.innerText = tr('recoveryBannerActive', { task: parsed.taskName, elapsed: formatElapsedTime(elapsed) });
   banner.classList.add('active');
 
   document.getElementById('btn-recovery-resume').onclick = () => {
     banner.classList.remove('active');
     initAudio();
-    currentTaskName = parsed.taskName;
-    focusSegmentStartedAt = parsed.focusStartedAt;
-    const elapsedSeconds = Math.floor((Date.now() - focusSegmentStartedAt) / 1000);
-    lastNotifiedMilestone = Math.floor(elapsedSeconds / MILESTONE_INTERVAL) * MILESTONE_INTERVAL;
-    document.getElementById('focus-task-display').innerText = currentTaskName;
+    const elapsedSeconds = Math.floor((Date.now() - parsed.focusStartedAt) / 1000);
+    document.getElementById('focus-task-display').innerText = parsed.taskName;
     updateFocusAccumulatedDisplay(elapsedSeconds);
     switchScreen('focus-screen');
     clearAllIntervals();
-    focusIntervalId = setInterval(tickFocusTimer, 1000);
-    saveActiveState({ status: 'focus', taskName: currentTaskName, focusStartedAt: focusSegmentStartedAt });
-    tickFocusTimer();
+    startFocusTimer(parsed.taskName, parsed.focusStartedAt, handleFocusTimerTick, handleFocusMidnight);
+    setLastMilestone(Math.floor(elapsedSeconds / MILESTONE_INTERVAL) * MILESTONE_INTERVAL);
+    saveActiveState({ status: 'focus', taskName: parsed.taskName, focusStartedAt: parsed.focusStartedAt });
+    handleFocusTimerTick(elapsedSeconds);
   };
 
   document.getElementById('btn-recovery-discard').onclick = () => {
@@ -1066,45 +754,12 @@ function checkActiveState() {
 }
 
 function clearAllIntervals() {
-  if (focusIntervalId) {
-    clearInterval(focusIntervalId);
-    focusIntervalId = null;
-  }
+  stopFocusTimer();
   stopPauseTimer();
   if (rouletteIntervalId) {
     clearInterval(rouletteIntervalId);
     rouletteIntervalId = null;
   }
-}
-
-function getFocusableElements(container) {
-  const els = container.querySelectorAll(
-    'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
-  );
-  return Array.from(els).filter((el) => el.offsetParent !== null || el.closest('.toggle-switch'));
-}
-
-function trapFocus(modalElement) {
-  function handler(e) {
-    if (e.key !== 'Tab') return;
-    const focusable = getFocusableElements(modalElement);
-    if (focusable.length === 0) return;
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      }
-    } else if (document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  }
-
-  modalElement.addEventListener('keydown', handler);
-  return () => modalElement.removeEventListener('keydown', handler);
 }
 
 function handleGlobalKeydown(e) {
@@ -1132,18 +787,18 @@ function handleGlobalKeydown(e) {
 }
 
 export function initApp() {
-  if (appInitialized) return;
-  appInitialized = true;
+  if (isAppInitialized()) return;
+  setAppInitialized(true);
 
-  settings = loadSettings();
-  applyTheme(settings.themeMode);
-  applyLanguage(settings.language);
-  tasks = loadTasks();
-  const hashTasks = applyTasksFromHash(window.location.hash, tasks, MAX_TASKS);
+  initSettings();
+  applyTheme(getSetting('themeMode'));
+  applyLanguage(getSetting('language'));
+  setTasks(loadTasks());
+  const initialTasks = getTasks();
+  const hashTasks = applyTasksFromHash(window.location.hash, initialTasks, MAX_TASKS);
   if (hashTasks) {
     if (hashTasks.applied) {
-      tasks = hashTasks.tasks;
-      saveTasks(tasks);
+      setTasks(hashTasks.tasks);
     }
     if (hashTasks.shouldClearHash) {
       if (window.history?.replaceState) {
@@ -1169,13 +824,13 @@ export function initApp() {
   document.getElementById('btn-close-summary').addEventListener('click', closeSummary);
   document.getElementById('btn-reset-log').addEventListener('click', resetLog);
   document.getElementById('btn-save-settings').addEventListener('click', handleSaveSettings);
-  document.getElementById('btn-export-json').addEventListener('click', exportLogsAsJSON);
-  document.getElementById('btn-export-csv').addEventListener('click', exportLogsAsCSV);
-  document.getElementById('btn-export-todotxt').addEventListener('click', exportTasksAsTodoTxt);
+  document.getElementById('btn-export-json').addEventListener('click', () => exportAsJSON(getTasks(), getSettings()));
+  document.getElementById('btn-export-csv').addEventListener('click', () => exportAsCSV(getTasks(), getSettings()));
+  document.getElementById('btn-export-todotxt').addEventListener('click', () => exportAsTodoTxt(getTasks()));
   document.getElementById('btn-import-todotxt').addEventListener('click', () => {
     document.getElementById('input-import-todotxt').click();
   });
-  document.getElementById('input-import-todotxt').addEventListener('change', handleImportTodoTxt);
+  document.getElementById('input-import-todotxt').addEventListener('change', handleImportTodoTxtChange);
   document.getElementById('undo-toast-btn').addEventListener('click', undoRemoveTask);
   document.querySelectorAll('input[name="setting-theme"]').forEach((radio) => {
     radio.addEventListener('change', handleThemePreview);
@@ -1184,8 +839,8 @@ export function initApp() {
     radio.addEventListener('change', handleLanguagePreview);
   });
   document.addEventListener('keydown', handleGlobalKeydown);
-  systemThemeMedia.addEventListener('change', () => {
-    if (settings.themeMode === 'system') {
+  getSystemThemeMedia().addEventListener('change', () => {
+    if (getSetting('themeMode') === 'system') {
       applyTheme('system');
     }
   });

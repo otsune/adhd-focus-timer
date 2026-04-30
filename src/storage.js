@@ -20,7 +20,7 @@ function isValidLogSegment(seg) {
 }
 
 export function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
 }
 
 // Safari private mode 等で getItem 自体が SecurityError を投げる環境への防御
@@ -187,4 +187,13 @@ export function saveFocusSegment(taskName, startedAt, endedAt, seconds) {
   });
 
   return saveLogs(logs);
+}
+
+/**
+ * 累積集中時間のキャッシュを無効化する（ログ変更時に呼び出す）
+ */
+export function invalidateFocusTimeCache() {
+  // キャッシュ本体は UI 側の getCachedTodayFocusTime が保持する。
+  // timer.js からも同じ通知経路を使えるよう storage.js で公開する。
+  window.dispatchEvent(new CustomEvent('focus-time-cache-invalidated'));
 }
