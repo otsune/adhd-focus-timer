@@ -1,4 +1,4 @@
-const MAX_TASK_NAME_LENGTH = 200;
+import { MAX_TASK_NAME_LENGTH } from './constants.js';
 const MAX_HASH_LENGTH = 4096;
 const MAX_TASKS_FIELD_LENGTH = 2048;
 
