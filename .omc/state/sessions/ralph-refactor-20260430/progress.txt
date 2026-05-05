@@ -1,0 +1,81 @@
+# Ralph Progress Log - app.js リファクタリング
+
+Session: ralph-refactor-20260430
+Started: 2026-04-30
+Completed: 2026-04-30
+
+## Final Status: ALL 9 STORIES PASSED
+
+### Metrics
+- Original app.js: 849行 → 178行 (79%削減)
+- テスト数: 229 → 301 (+72件, 31%増)
+- 新規モジュール: 7個 (app-utils, task-ui, roulette, summary-ui, settings-ui, recovery-ui, focus-session)
+- ビルド重複識別子警告: 0件
+
+---
+
+## Story Results
+
+| ID | Title | Result |
+|----|-------|--------|
+| US-001 | constants.jsマジックナンバー集約 | ✅ PASS |
+| US-002 | task-ui.js 抽出 | ✅ PASS |
+| US-003 | roulette.js 抽出 | ✅ PASS |
+| US-004 | summary-ui.js 抽出 | ✅ PASS |
+| US-005 | settings-ui.js 抽出 | ✅ PASS |
+| US-006 | recovery-ui.js 抽出 | ✅ PASS |
+| US-007 | focus-session.js 抽出 | ✅ PASS |
+| US-008 | 新規テスト追加 (287+) | ✅ PASS (301件) |
+| US-009 | build.js更新 + app.js 200行以下 | ✅ PASS (178行) |
+
+---
+
+## Implementation Summary
+
+### Phase 1: constants.js
+- ADDTASK_FOCUS_DELAY_MS=50, SCREEN_SWITCH_DELAY_MS=100 追加
+
+### Phase 2: 自己完結モジュール抽出
+- **app-utils.js**: 共有 tr()/uiDuration() ヘルパー（フラットビルド名前衝突対策）
+- **task-ui.js**: タスクスロットUI、アンドゥシステム（undoTimeout/undoData 所有）
+- **roulette.js**: ルーレットアニメーション（rouletteIntervalId 所有）
+- **summary-ui.js**: サマリーモーダル（コールバック注入: onRenderMain/onSwitchScreen/onResetRecovery）
+- **settings-ui.js**: 設定モーダル、言語切替（コールバック注入: onRenderMain）
+
+### Phase 3: 状態依存モジュール抽出
+- **recovery-ui.js**: リカバリーモード状態（isRecoveryMode/lastTaskName/lastPauseType/recoveryPausedAt 所有）、コールバック注入
+- **focus-session.js**: フォーカスセッションライフサイクル、マイルストーン、キャッシュ、checkActiveState
+
+### Phase 4: テスト追加
+- 6テストファイル新規作成（72件追加）
+- task-ui: 18件, roulette: 6件, summary-ui: 9件
+- settings-ui: 12件, recovery-ui: 11件, focus-session: 16件
+
+### Phase 5: build.js MODULE_ORDER 更新
+- 新規7モジュールを依存順（Tier 3.5→4a→4b→4）で追加
+
+---
+
+## Key Architectural Decisions
+
+1. **コールバック注入パターン**: 循環インポートを回避しつつモジュール分割を実現
+2. **app-utils.js**: フラットビルドでの const tr 重複解消
+3. **checkActiveState の focus-session.js 移動**: フォーカスセッション回復ロジックと密結合のためplanから変更
+
+---
+
+## Bug Found and Fixed by Architect Review
+
+**Bug**: src/app.js の initAudio インポート漏れ
+- initAudio() が btn-roulette のイベントハンドラで呼ばれているが、app.js に audio.js のインポートがなかった
+- フラットビルドではグローバルスコープで解決されるため hidden だったが、dev mode (ESM) では ReferenceError
+- **Fix**: `import { initAudio } from './audio.js';` を app.js に追加
+
+---
+
+## Patterns Learned
+
+1. フラットビルドシステムでは同名の const/function 宣言が SyntaxError になる → app-utils.js で共通化
+2. 複数モジュールにまたがるコールバック注入は initApp() で一括初期化 → 明示的な依存関係
+3. モジュールスコープ変数のリセット関数をテスト用に export する (clearUndoState など)
+4. アーキテクト審査で dev path と flat build path の差異バグを検出 → 開発モードテストの重要性

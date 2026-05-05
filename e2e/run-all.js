@@ -20,6 +20,14 @@ const tests = [
   { name: '08-edge-cases', module: './tests/08-edge-cases.js' },
 ];
 
+function getSelectedTests() {
+  const requested = process.argv.slice(2).map((item) => item.trim()).filter(Boolean);
+  if (requested.length === 0) {
+    return tests;
+  }
+  return tests.filter((test) => requested.some((item) => test.name.includes(item)));
+}
+
 async function runAllTests() {
   console.log('═══════════════════════════════════════════════════════════');
   console.log('  ADHD Focus Timer - E2E Test Suite');
@@ -32,15 +40,17 @@ async function runAllTests() {
 
   // アプリを開く
   console.log('  ブラウザを起動中...');
-  browser.open();
+  await browser.open();
   console.log('  dist/index.html を読み込みました\n');
 
   const results = [];
   let passedCount = 0;
   let failedCount = 0;
+  const selectedTests = getSelectedTests();
 
-  for (const test of tests) {
+  for (const test of selectedTests) {
     try {
+      console.log(`  -> running ${test.name}`);
       // テストモジュールを動的インポート
       const testModule = await import(test.module);
       

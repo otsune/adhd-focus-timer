@@ -1,0 +1,2 @@
+- `@vitest/coverage-v8` は vitest の互換バージョンに合わせて導入する必要がある。今回の環境では `vitest@3.2.4` に対して `@vitest/coverage-v8@3.2.4` が必要だった。
+- coverage 設定は `vitest.config.js` の `test.coverage` にまとめると、`npm run test:coverage` だけで `coverage-summary.json` と HTML レポートを生成できる。

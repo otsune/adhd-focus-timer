@@ -13,7 +13,7 @@ export async function run() {
 
   // セットアップ
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // === シナリオA: 離席からの復帰 ===
@@ -28,7 +28,7 @@ export async function run() {
   browser.evaluate("document.querySelector('.btn-start-direct').click()");
 
   // 少し待機
-  browser.evaluate("new Promise(r => setTimeout(r, 1000))");
+  await browser.wait(1000);
 
   // 離席ボタンをクリック
   browser.evaluate("document.querySelector('#btn-away').click()");
@@ -45,7 +45,7 @@ export async function run() {
   const statusBannerVisible = browser.isVisible('#recovery-status-banner');
   test.assert(statusBannerVisible, '復帰ステータスバナーが表示される');
 
-  browser.screenshot('04-recovery-mode-away');
+  await browser.screenshot('04-recovery-mode-away');
 
   // 再開ボタンをクリック
   browser.evaluate("document.querySelector('#btn-resume-last').click()");
@@ -54,7 +54,7 @@ export async function run() {
   const focusScreenVisible = browser.isVisible('#focus-screen');
   test.assert(focusScreenVisible, '再開後に集中画面に戻る');
 
-  browser.screenshot('04-recovery-mode-resumed');
+  await browser.screenshot('04-recovery-mode-resumed');
 
   // === シナリオB: 食事からの別タスク復帰 ===
   console.log('  [シナリオB: 食事からの別タスク復帰]');
@@ -70,7 +70,7 @@ export async function run() {
   const taskButtonsExist = browser.countElements('.btn-task-recovery') > 0;
   test.assert(taskButtonsExist, 'タスク選択ボタンが表示される');
 
-  browser.screenshot('04-recovery-mode-meal');
+  await browser.screenshot('04-recovery-mode-meal');
 
   // === シナリオC: 復帰モードから終了 ===
   console.log('  [シナリオC: 復帰モードから終了]');
@@ -82,14 +82,14 @@ export async function run() {
   const summaryModalVisible = browser.isVisible('#summary-modal');
   test.assert(summaryModalVisible, '終了後にサマリーモーダルが表示される');
 
-  browser.screenshot('04-recovery-mode-finish');
+  await browser.screenshot('04-recovery-mode-finish');
 
   return test.summary();
 }
 
 // 直接実行時
 if (process.argv[1].includes('04-recovery-mode')) {
-  browser.open();
+  await browser.open();
   const passed = await run();
   process.exit(passed ? 0 : 1);
 }

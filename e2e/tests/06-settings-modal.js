@@ -13,7 +13,7 @@ export async function run() {
 
   // セットアップ
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // === シナリオA: 設定の表示 ===
@@ -21,6 +21,7 @@ export async function run() {
 
   // 設定ボタンをクリック
   browser.evaluate("document.querySelector('#btn-show-settings').click()");
+  await browser.waitForVisible('#settings-modal');
 
   // 設定モーダルが表示されることを確認
   const settingsModalVisible = browser.isVisible('#settings-modal');
@@ -39,7 +40,7 @@ export async function run() {
   );
   test.assert(milestoneChecked.includes('true'), '節目通知はデフォルトでON');
 
-  browser.screenshot('06-settings-modal-initial');
+  await browser.screenshot('06-settings-modal-initial');
 
   // === シナリオB: 設定の変更 ===
   console.log('  [シナリオB: 設定の変更]');
@@ -52,23 +53,30 @@ export async function run() {
 
   // 保存ボタンをクリック
   browser.evaluate("document.querySelector('#btn-save-settings').click()");
+  await browser.waitForHidden('#settings-modal');
 
   // モーダルが閉じることを確認
   const settingsModalHidden = !browser.isVisible('#settings-modal');
   test.assert(settingsModalHidden, '保存後にモーダルが閉じる');
 
   // localStorageに設定が保存されていることを確認
-  const savedSettings = browser.getStorage('settings_v2');
-  test.assert(savedSettings.includes('false'), '設定がlocalStorageに保存される');
+  const savedSettings = browser.evaluate(`
+    (() => {
+      const settings = JSON.parse(localStorage.getItem('settings_v2') || '{}');
+      return settings.milestoneEnabled === false && settings.soundEnabled === false;
+    })()
+  `);
+  test.assert(savedSettings.toLowerCase() === 'true', '設定がlocalStorageに保存される');
 
   // === シナリオC: 設定の永続化確認 ===
   console.log('  [シナリオC: 設定の永続化確認]');
 
   // ページをリロード
-  browser.reload();
+  await browser.reload();
 
   // 設定モーダルを再度開く
   browser.evaluate("document.querySelector('#btn-show-settings').click()");
+  await browser.waitForVisible('#settings-modal');
 
   // 変更が保持されていることを確認
   const milestoneAfterReload = browser.evaluate(
@@ -81,7 +89,7 @@ export async function run() {
   );
   test.assert(soundAfterReload.includes('false'), '音通知OFFが保持される');
 
-  browser.screenshot('06-settings-modal-persisted');
+  await browser.screenshot('06-settings-modal-persisted');
 
   // === シナリオD: 設定をONに戻す ===
   console.log('  [シナリオD: 設定をONに戻す]');
@@ -90,17 +98,23 @@ export async function run() {
   browser.evaluate("document.querySelector('#setting-milestone').click()");
   browser.evaluate("document.querySelector('#setting-sound').click()");
   browser.evaluate("document.querySelector('#btn-save-settings').click()");
+  await browser.waitForHidden('#settings-modal');
 
   // 保存後の確認
-  const finalSettings = browser.getStorage('settings_v2');
-  test.assert(finalSettings.includes('true'), '設定がONに戻る');
+  const finalSettings = browser.evaluate(`
+    (() => {
+      const settings = JSON.parse(localStorage.getItem('settings_v2') || '{}');
+      return settings.milestoneEnabled === true && settings.soundEnabled === true;
+    })()
+  `);
+  test.assert(finalSettings.toLowerCase() === 'true', '設定がONに戻る');
 
   return test.summary();
 }
 
 // 直接実行時
 if (process.argv[1].includes('06-settings-modal')) {
-  browser.open();
+  await browser.open();
   const passed = await run();
   process.exit(passed ? 0 : 1);
 }

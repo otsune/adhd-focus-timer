@@ -1,0 +1,20 @@
+
+> adhd-focus-timer@2.0.0 test
+> vitest run
+
+
+ RUN  v3.2.4 /mnt/c/Users/user/Documents/adhd-focus-timer
+
+ ✓ tests/milestone.test.js (15 tests) 4ms
+ ✓ tests/stats.test.js (29 tests) 6ms
+ ✓ tests/date-utils.test.js (18 tests) 4ms
+ ✓ tests/url-tasks.test.js (18 tests) 6ms
+ ✓ tests/storage.test.js (56 tests) 12ms
+ ✓ tests/utils.test.js (33 tests) 5ms
+ ✓ tests/todotxt.test.js (8 tests) 4ms
+
+ Test Files  7 passed (7)
+      Tests  177 passed (177)
+   Start at  10:13:51
+   Duration  25.69s (transform 182ms, setup 721ms, collect 234ms, tests 41ms, environment 102.79s, prepare 5.66s)
+

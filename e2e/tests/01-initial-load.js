@@ -13,7 +13,7 @@ export async function run() {
 
   // セットアップ: localStorageクリア → リロード
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // 1. メイン画面が表示されていることを確認
@@ -49,14 +49,14 @@ export async function run() {
   test.assert(summaryModalHidden, 'サマリーモーダルは非表示');
 
   // スクリーンショット
-  browser.screenshot('01-initial-load');
+  await browser.screenshot('01-initial-load');
 
   return test.summary();
 }
 
 // 直接実行時
 if (process.argv[1].includes('01-initial-load')) {
-  browser.open();
+  await browser.open();
   const passed = await run();
   process.exit(passed ? 0 : 1);
 }

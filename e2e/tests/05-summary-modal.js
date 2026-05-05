@@ -15,7 +15,7 @@ export async function run() {
   console.log('  [シナリオA: 記録なし状態]');
 
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // 今日の成果ボタンをクリック
@@ -32,7 +32,7 @@ export async function run() {
     '記録なし時のメッセージが表示される'
   );
 
-  browser.screenshot('05-summary-modal-empty');
+  await browser.screenshot('05-summary-modal-empty');
 
   // 閉じるボタンで閉じる
   browser.evaluate("document.querySelector('#btn-close-summary').click()");
@@ -45,7 +45,7 @@ export async function run() {
 
   // テストログデータを注入
   browser.injectTestLogs();
-  browser.reload();
+  await browser.reload();
 
   // 今日の成果ボタンをクリック
   browser.evaluate("document.querySelector('#btn-show-summary').click()");
@@ -58,7 +58,7 @@ export async function run() {
   const statCardCount = browser.countElements('.summary-stat-card');
   test.assert(statCardCount >= 4, '統計カードが表示される');
 
-  browser.screenshot('05-summary-modal-with-data');
+  await browser.screenshot('05-summary-modal-with-data');
 
   // === シナリオC: エクスポートボタンの存在確認 ===
   console.log('  [シナリオC: エクスポートボタン]');
@@ -88,14 +88,14 @@ export async function run() {
     'リセット後は記録なし状態になる'
   );
 
-  browser.screenshot('05-summary-modal-after-reset');
+  await browser.screenshot('05-summary-modal-after-reset');
 
   return test.summary();
 }
 
 // 直接実行時
 if (process.argv[1].includes('05-summary-modal')) {
-  browser.open();
+  await browser.open();
   const passed = await run();
   process.exit(passed ? 0 : 1);
 }

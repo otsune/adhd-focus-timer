@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /mnt/c/Users/user/Documents/adhd-focus-timer
+
+ ✓ tests/export.test.js (6 tests) 34ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  10:30:34
+   Duration  25.21s (transform 78ms, setup 116ms, collect 78ms, tests 34ms, environment 23.40s, prepare 974ms)
+

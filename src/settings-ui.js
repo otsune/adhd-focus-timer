@@ -1,6 +1,14 @@
 import { tr } from './app-utils.js';
 import { TRANSLATIONS } from './i18n.js';
-import { setSetting, getSetting, updateSettings, setLastFocusedElement, getLastFocusedElement, setCurrentTrapCleanup, clearTrapCleanup } from './state.js';
+import {
+  setSetting,
+  getSetting,
+  updateSettings,
+  setLastFocusedElement,
+  getLastFocusedElement,
+  setCurrentTrapCleanup,
+  clearTrapCleanup,
+} from './state.js';
 import { applyTheme } from './theme.js';
 import { setText, setAttr, trapFocus } from './ui.js';
 import { formatElapsedTime } from './utils.js';
@@ -35,7 +43,7 @@ export function applyLanguage(language) {
             elapsed: formatElapsedTime(elapsed),
           });
         }
-      } catch (e) { }
+      } catch (e) {}
     }
   }
 

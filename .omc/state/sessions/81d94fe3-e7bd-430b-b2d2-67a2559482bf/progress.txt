@@ -1,0 +1,42 @@
+# Ralph Progress Log - app.js モジュール分割リファクタリング完成確認
+
+## 実施内容
+
+app.js を 720行→179行 に縮小し、7つの専用モジュールに分割するリファクタリングを検証・完成させた。
+
+### 変更ファイル（新規）
+- src/app-utils.js — tr/uiDuration の共有ユーティリティ
+- src/focus-session.js — 集中セッション管理（startFocus, pauseAs, finishFocus, checkActiveState 等）
+- src/recovery-ui.js — リカバリー画面 UI（renderRecoverySection, exitRecovery 等）
+- src/roulette.js — ルーレット機能（startRoulette, clearRouletteInterval）
+- src/settings-ui.js — 設定画面 UI（showSettings, handleSaveSettings, applyLanguage 等）
+- src/summary-ui.js — サマリーモーダル UI（showSummary, closeSummary）
+- src/task-ui.js — タスクスロット UI（renderTaskSlots, addTask, undoRemoveTask 等）
+- 各モジュールのテストファイル (tests/*.test.js)
+
+### 変更ファイル（既存）
+- src/app.js: 720→179行、オーケストレーションのみに削減
+- src/constants.js: FLASH_DURATION_MS, MILESTONE_MESSAGE_DURATION_MS, SCREEN_SWITCH_DELAY_MS 等の新定数追加
+- build.js: MODULE_ORDER に7モジュールを依存順序で追加
+
+### Deslop パスで修正した内容
+- src/recovery-ui.js: 未使用 `STORAGE_KEYS` import を削除
+- src/app.js: 未使用 `setRecoveryState` import を削除
+- src/task-ui.js: `removeTask()` 内の冗長変数 `const removedIndex = index;` を削除
+- src/task-ui.js, src/roulette.js: 二重空白行を修正
+
+## 検証エビデンス
+
+- npm test: 22 files / 301 tests passed
+- npm run build: Build complete: dist/index.html (警告なし)
+- アーキテクトレビュー: APPROVED（技術的負債メモ付き）
+
+## 技術的負債（次回対処推奨）
+
+1. **recovery 状態を state.js へ移管**: focus-session.js と recovery-ui.js の双方向 import を解消するため、isRecoveryMode 等を state.js に移動
+2. **コールバック注入の規約統一**: showSummary の直接 import vs コールバック注入が混在
+
+## 学習事項
+
+- build.js の MODULE_ORDER は依存関係の層を明示するコメントで維持すること
+- コールバック注入パターン（setXxxCallbacks）が統一スタイルだが、summary-ui だけ直接 importとの混在がある

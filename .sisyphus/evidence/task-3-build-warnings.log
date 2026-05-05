@@ -1,0 +1,47 @@
+
+> adhd-focus-timer@2.0.0 build
+> node build.js
+
+Building ADHD Focus Timer...
+
+  Processing: src/constants.js
+  Processing: src/utils.js
+  Processing: src/i18n.js
+  Processing: src/ui.js
+  Processing: src/date-utils.js
+  Processing: src/storage.js
+  Processing: src/audio.js
+  Processing: src/theme.js
+  Processing: src/milestone.js
+  Processing: src/stats.js
+  Processing: src/url-tasks.js
+  Processing: src/todotxt.js
+  Processing: src/state.js
+  Processing: src/tasks.js
+  Processing: src/timer.js
+  Processing: src/export.js
+  Processing: src/app.js
+[build] Duplicate identifier 'MAX_TASKS' in src/constants.js and src/app.js
+[build] Duplicate identifier 'MAX_TASK_NAME_LENGTH' in src/constants.js and src/url-tasks.js and src/app.js
+[build] Duplicate identifier 't' in src/i18n.js and src/app.js
+[build] Duplicate identifier 'TRANSLATIONS' in src/i18n.js and src/app.js
+[build] Duplicate identifier 'setText' in src/ui.js and src/app.js
+[build] Duplicate identifier 'setAttr' in src/ui.js and src/app.js
+[build] Duplicate identifier 'getFocusableElements' in src/ui.js and src/app.js
+[build] Duplicate identifier 'trapFocus' in src/ui.js and src/app.js
+[build] Duplicate identifier 'initAudio' in src/audio.js and src/app.js
+[build] Duplicate identifier 'playBeep' in src/audio.js and src/app.js
+[build] Duplicate identifier 'applyTheme' in src/theme.js and src/app.js
+[build] Duplicate identifier 'systemThemeMedia' in src/theme.js and src/app.js
+[build] Duplicate identifier 'appInitialized' in src/state.js and src/app.js
+[build] Duplicate identifier 'lastFocusedElement' in src/state.js and src/app.js
+[build] Duplicate identifier 'currentTrapCleanup' in src/state.js and src/app.js
+[build] Duplicate identifier 'settings' in src/state.js and src/app.js
+[build] Duplicate identifier 'tasks' in src/tasks.js and src/app.js
+[build] Duplicate identifier 'tickFocusTimer' in src/timer.js and src/app.js
+[build] Duplicate identifier 'startPauseTimer' in src/timer.js and src/app.js
+[build] Duplicate identifier 'stopPauseTimer' in src/timer.js and src/app.js
+[build] Duplicate identifier 'tickPauseTimer' in src/timer.js and src/app.js
+[build] Duplicate identifier 'focusIntervalId' in src/timer.js and src/app.js
+[build] Duplicate identifier 'focusSegmentStartedAt' in src/timer.js and src/app.js
+[build] Duplicate identifier 'currentTaskName' in src/timer.js and src/app.js

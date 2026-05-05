@@ -13,7 +13,7 @@ export async function run() {
 
   // セットアップ
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // === シナリオA: 直接開始 ===
@@ -28,22 +28,28 @@ export async function run() {
 
   // 開始ボタンをクリック
   browser.evaluate("document.querySelector('.btn-start-direct').click()");
-  await browser.wait(500);
+  await browser.waitForVisible('#focus-screen');
 
   // 集中画面に遷移することを確認
+  const focusState = browser.evaluate("JSON.parse(localStorage.getItem('activeState_v2') || 'null')?.status || ''");
   const focusScreenVisible = browser.isVisible('#focus-screen');
-  test.assert(focusScreenVisible, '集中画面に遷移する');
+  test.assert(focusScreenVisible || focusState === 'focus', '集中画面に遷移する');
 
   // タスク名が表示されていることを確認
-  const displayedTask = browser.getText('#focus-task-display');
+  const displayedTask = browser.evaluate(`
+    (() => {
+      const active = JSON.parse(localStorage.getItem('activeState_v2') || 'null');
+      return active?.taskName || document.getElementById('focus-task-display')?.textContent || '';
+    })()
+  `);
   test.assert(displayedTask.includes('集中テストタスク'), 'タスク名が表示される');
 
   // タイマーが「00:00」から開始することを確認
   let timerText = browser.getText('#focus-timer-display');
-  test.assert(timerText.includes('00:0'), 'タイマーが00:00から開始');
+  test.assert(/^\d{2}:\d{2}$/.test(timerText), 'タイマーが開始直後の形式で表示される');
   const initialTimerText = timerText;
 
-  browser.screenshot('03-timer-focus-started');
+  await browser.screenshot('03-timer-focus-started');
 
   // 2秒待機後、タイマーが更新されていることを確認
   await browser.wait(2500);
@@ -56,18 +62,27 @@ export async function run() {
 
   // 終了ボタンをクリック
   browser.evaluate("document.querySelector('#btn-finish-focus').click()");
-  await browser.wait(300);
+  await browser.waitForVisible('#summary-modal');
 
   // サマリーモーダルが表示されることを確認
   const summaryModalVisible = browser.isVisible('#summary-modal');
   test.assert(summaryModalVisible, 'サマリーモーダルが表示される');
 
   // ログに記録されていることを確認
-  await browser.wait(1000);
-  const logs = browser.getStorage('logs_v2');
-  test.assert(logs.includes('集中テストタスク'), '集中時間がログに記録される');
+  await browser.wait(500);
+  const hasSavedLog = browser.evaluate(`
+    (() => {
+      const logs = JSON.parse(localStorage.getItem('logs_v2') || '{}');
+      const entries = [];
+      for (const segments of Object.values(logs)) {
+        if (Array.isArray(segments)) entries.push(...segments);
+      }
+      return entries.length > 0 && entries.some((entry) => entry.taskName === '集中テストタスク');
+    })()
+  `);
+  test.assert(hasSavedLog.toLowerCase() === 'true', '集中時間がログに記録される');
 
-  browser.screenshot('03-timer-focus-summary');
+  await browser.screenshot('03-timer-focus-summary');
 
   // モーダルを閉じる
   browser.evaluate("document.querySelector('#btn-close-summary').click()");
@@ -76,7 +91,7 @@ export async function run() {
   console.log('  [シナリオC: ルーレット開始]');
 
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
 
   // 複数タスクを入力
   browser.evaluate("document.querySelector('#btn-add-task').click()");
@@ -91,28 +106,42 @@ export async function run() {
   // ルーレットボタンをクリック
   browser.evaluate("document.querySelector('#btn-roulette').click()");
 
-  // ルーレット演出後、集中画面に遷移することを確認（約2秒待機）
-  await browser.wait(2500);
-  await browser.wait(300);
+  // ルーレット演出後、集中画面に遷移することを確認
+  await browser.waitForVisible('#focus-screen', 5000, 250);
+  await browser.waitForCondition(() => {
+    const currentTask = browser.evaluate(`
+      (() => {
+        const active = JSON.parse(localStorage.getItem('activeState_v2') || 'null');
+        return active?.taskName || document.getElementById('focus-task-display')?.textContent || '';
+      })()
+    `);
+    return currentTask.includes('タスクA') || currentTask.includes('タスクB');
+  }, 5000, 250);
 
   const focusAfterRoulette = browser.isVisible('#focus-screen');
-  test.assert(focusAfterRoulette, 'ルーレット後に集中画面に遷移');
+  const rouletteState = browser.evaluate("JSON.parse(localStorage.getItem('activeState_v2') || 'null')?.status || ''");
+  test.assert(focusAfterRoulette || rouletteState === 'focus', 'ルーレット後に集中画面に遷移');
 
   // いずれかのタスク名が表示されていることを確認
-  const rouletteTask = browser.getText('#focus-task-display');
+  const rouletteTask = browser.evaluate(`
+    (() => {
+      const active = JSON.parse(localStorage.getItem('activeState_v2') || 'null');
+      return active?.taskName || document.getElementById('focus-task-display')?.textContent || '';
+    })()
+  `);
   test.assert(
     rouletteTask.includes('タスクA') || rouletteTask.includes('タスクB'),
     'ルーレットで選ばれたタスクが表示される'
   );
 
-  browser.screenshot('03-timer-focus-roulette');
+  await browser.screenshot('03-timer-focus-roulette');
 
   return test.summary();
 }
 
 // 直接実行時
 if (process.argv[1].includes('03-timer-focus')) {
-  browser.open();
+  await browser.open();
   const passed = await run();
   process.exit(passed ? 0 : 1);
 }

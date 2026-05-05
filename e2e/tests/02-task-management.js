@@ -13,7 +13,7 @@ export async function run() {
 
   // セットアップ
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // === シナリオA: タスク追加 ===
@@ -23,11 +23,7 @@ export async function run() {
   let taskCount = browser.countElements('.task-slot');
   test.assertEqual(taskCount, 1, '初期状態: タスクスロットは1つ');
 
-  // タスク追加ボタンの状態を取得して押す
-  const stateOutput = browser.state();
-  
-  // #btn-add-task を探してクリック（stateの出力からインデックスを特定）
-  // 簡易的に evaluate で直接操作
+  // #btn-add-task を直接操作
   browser.evaluate("document.querySelector('#btn-add-task').click()");
   
   taskCount = browser.countElements('.task-slot');
@@ -47,13 +43,13 @@ export async function run() {
   );
   test.assert(addButtonDisabled.includes('true'), '6個で追加ボタンが無効化される');
 
-  browser.screenshot('02-task-management-six-tasks');
+  await browser.screenshot('02-task-management-six-tasks');
 
   // === シナリオB: タスク入力 ===
   console.log('  [シナリオB: タスク入力]');
 
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
 
   // 最初のタスクにテキスト入力
   browser.evaluate(`
@@ -71,7 +67,7 @@ export async function run() {
 
   browser.resetStorage();
   browser.evaluate("localStorage.setItem('tasks_v2', JSON.stringify(['タスク1']))");
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // 2つ目のタスクを追加
@@ -97,19 +93,19 @@ export async function run() {
 
   // アンドゥボタンをクリック
   browser.evaluate("document.querySelector('#undo-toast-btn').click()");
-  await browser.wait(300);
+  await browser.waitForCondition(() => browser.countElements('.task-slot') === 2, 4000, 250);
 
   taskCount = browser.countElements('.task-slot');
   test.assertEqual(taskCount, 2, 'アンドゥ後: タスクが復元される');
 
-  browser.screenshot('02-task-management-undo');
+  await browser.screenshot('02-task-management-undo');
 
   return test.summary();
 }
 
 // 直接実行時
 if (process.argv[1].includes('02-task-management')) {
-  browser.open();
+  await browser.open();
   const passed = await run();
   process.exit(passed ? 0 : 1);
 }

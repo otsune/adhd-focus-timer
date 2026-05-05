@@ -1,0 +1,1 @@
+- `npm install --save-dev @vitest/coverage-v8` は初回に peer dependency 競合で失敗した。major を上げずに進めるため、互換版を明示指定した。

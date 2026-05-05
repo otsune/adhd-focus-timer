@@ -1,0 +1,113 @@
+{
+  "title": "app.js 全面リファクタリング: ゴッドオブジェクト分割",
+  "description": "849行のapp.jsを6つの機能別モジュールに分割し、定数整理とテスト強化を行う。229テスト全維持が必須条件。",
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Phase 1: マジックナンバーをconstants.jsに集約",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/constants.jsにADDTASK_FOCUS_DELAY_MS=50が追加されている",
+        "src/constants.jsにSCREEN_SWITCH_DELAY_MS=100が追加されている",
+        "src/app.jsの179行付近のsetTimeout(…, 50)がADDTASK_FOCUS_DELAY_MSを使用している",
+        "src/app.jsの314行付近のsetTimeout(…, 100)がSCREEN_SWITCH_DELAY_MSを使用している",
+        "npm testで229テスト全合格"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Phase 2a: src/task-ui.js 抽出",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/task-ui.jsが存在し、renderTaskSlots, addTask, removeTask, showUndoToast, undoRemoveTaskをexportしている",
+        "undoTimeout, undoDataがtask-ui.jsのモジュールスコープ変数として管理されている",
+        "app.jsからこれら5関数の実装が削除され、task-ui.jsからimportされている",
+        "npm testで全テスト合格",
+        "npm run buildが成功する"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Phase 2b: src/roulette.js 抽出",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/roulette.jsが存在し、startRouletteをexportしている",
+        "rouletteIntervalIdがroulette.jsのモジュールスコープ変数として管理されている",
+        "app.jsからstartRoulette実装が削除されroulette.jsからimportされている",
+        "npm testで全テスト合格",
+        "npm run buildが成功する"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Phase 2c: src/summary-ui.js 抽出",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/summary-ui.jsが存在し、showSummary, closeSummaryをexportしている",
+        "app.jsからこれら2関数の実装が削除されsummary-ui.jsからimportされている",
+        "npm testで全テスト合格",
+        "npm run buildが成功する"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Phase 2d: src/settings-ui.js 抽出",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/settings-ui.jsが存在し、showSettings, handleSaveSettings, applyLanguage, applyStaticTranslations, updateFocusScreenTranslations, handleThemePreview, handleLanguagePreviewをexportしている",
+        "app.jsからこれら関数の実装が削除されsettings-ui.jsからimportされている",
+        "npm testで全テスト合格",
+        "npm run buildが成功する"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Phase 3a: src/recovery-ui.js 抽出（コールバック注入）",
+      "passes": true,
+      "note": "checkActiveStateはfocus-session.jsに移動（フォーカスセッション回復ロジックと密結合のため）。getLastPauseType/getRecoveryPausedAtは外部消費がないため省略。",
+      "acceptanceCriteria": [
+        "src/recovery-ui.jsが存在し、renderRecoverySection, exitRecovery, getIsRecoveryMode, getLastTaskName, setIsRecoveryMode, setRecoveryState, clearRecoveryStateをexportしている",
+        "isRecoveryMode, lastTaskName, lastPauseType, recoveryPausedAtがrecovery-ui.jsのモジュールスコープ変数として管理されている",
+        "npm testで全テスト合格",
+        "npm run buildが成功する"
+      ]
+    },
+    {
+      "id": "US-007",
+      "title": "Phase 3b: src/focus-session.js 抽出（コールバック注入）",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/focus-session.jsが存在し、startFocus, handleFocusTimerTick, pauseAs, finishFocus, handleFocusMilestone, showMilestoneMessage, flashScreen, getCachedTodayFocusTime, checkActiveStateをexportしている",
+        "setFocusSessionCallbacks({ onSwitchScreen, onClearAllIntervals, onRenderMain })のコールバック注入パターンが実装されている",
+        "app.jsからこれら関数の実装が削除されfocus-session.jsからimportされている",
+        "npm testで全テスト合格",
+        "npm run buildが成功する"
+      ]
+    },
+    {
+      "id": "US-008",
+      "title": "Phase 4: 新規モジュールのユニットテスト追加",
+      "passes": true,
+      "acceptanceCriteria": [
+        "tests/task-ui.test.jsが存在し15件以上のテストを含む (実績: 18件)",
+        "tests/roulette.test.jsが存在し5件以上のテストを含む (実績: 6件)",
+        "tests/summary-ui.test.jsが存在し8件以上のテストを含む (実績: 9件)",
+        "tests/settings-ui.test.jsが存在し8件以上のテストを含む (実績: 12件)",
+        "tests/recovery-ui.test.jsが存在し10件以上のテストを含む (実績: 11件)",
+        "tests/focus-session.test.jsが存在し12件以上のテストを含む (実績: 16件)",
+        "npm testの合計テスト数が287件以上 (実績: 301件)"
+      ]
+    },
+    {
+      "id": "US-009",
+      "title": "Phase 5: build.js MODULE_ORDER 更新 + app.js スリム化確認",
+      "passes": true,
+      "acceptanceCriteria": [
+        "build.jsのMODULE_ORDERに新規7モジュール(app-utils, task-ui, roulette, summary-ui, settings-ui, recovery-ui, focus-session)が依存順で追加されている",
+        "npm run buildが成功し dist/index.html が生成される",
+        "wc -l src/app.jsの出力が200以下 (実績: 178行)",
+        "npm testで全テスト合格 (実績: 301件)"
+      ]
+    }
+  ]
+}

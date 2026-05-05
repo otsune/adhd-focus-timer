@@ -1,0 +1,84 @@
+{
+  "pageErrorCount": 0,
+  "consoleErrorCount": 0,
+  "scenarios": [
+    {
+      "name": "S1_main_screen_visible",
+      "pass": true,
+      "mainVisible": true,
+      "mainActive": 1,
+      "taskSlots": 1,
+      "addBtnVisible": true
+    },
+    {
+      "name": "S2a_focus_started",
+      "pass": true,
+      "focusVisible": true,
+      "focusActive": 1,
+      "focusTaskName": "QAタスクA",
+      "elapsedTextEarly": "00:02"
+    },
+    {
+      "name": "S2b_countup_advances",
+      "pass": true,
+      "elapsedTextEarly": "00:02",
+      "elapsedTextLater": "00:05"
+    },
+    {
+      "name": "S2c_summary_shown",
+      "pass": true,
+      "summaryModalVisible": true,
+      "summaryHasContent": true
+    },
+    {
+      "name": "S2d_log_recorded",
+      "pass": true,
+      "exists": true,
+      "dayCount": 1,
+      "flatCount": 1,
+      "sample": {
+        "id": "moku3hnau5g9e",
+        "taskName": "QAタスクA",
+        "startedAt": 1777514255957,
+        "endedAt": 1777514261014,
+        "seconds": 5,
+        "_day": "2026-04-30"
+      }
+    },
+    {
+      "name": "S4_language_switch_ja_en",
+      "pass": true,
+      "settingsVisible": true,
+      "labelJaInitial": "言語",
+      "labelEn": "Language",
+      "themeLabelEn": "Theme",
+      "labelJaAfter": "言語"
+    },
+    {
+      "name": "S5_theme_switch_light_dark_system",
+      "pass": true,
+      "light": {
+        "themeMode": "light",
+        "dataTheme": "light"
+      },
+      "dark": {
+        "themeMode": "dark",
+        "dataTheme": "dark"
+      },
+      "system": {
+        "themeMode": "system",
+        "dataTheme": "light"
+      }
+    },
+    {
+      "name": "S3_no_js_errors",
+      "pass": true,
+      "pageErrorCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorsHead": [],
+      "consoleErrorsHead": []
+    }
+  ],
+  "totalScenarios": 8,
+  "passedScenarios": 8
+}

@@ -1,0 +1,53 @@
+
+> adhd-focus-timer@2.0.0 test:coverage
+> vitest run --coverage
+
+
+ RUN  v3.2.4 /mnt/c/Users/user/Documents/adhd-focus-timer
+      Coverage enabled with v8
+
+ ✓ tests/date-utils.test.js (18 tests) 5ms
+ ✓ tests/milestone.test.js (15 tests) 5ms
+ ✓ tests/ui.test.js (7 tests) 33ms
+ ✓ tests/storage.test.js (56 tests) 14ms
+ ✓ tests/export.test.js (6 tests) 55ms
+ ✓ tests/app.test.js (1 test) 462ms
+   ✓ app smoke > initApp を import して実行しても throw せず main-screen が存在する  461ms
+ ✓ tests/stats.test.js (29 tests) 6ms
+ ✓ tests/todotxt.test.js (8 tests) 9ms
+ ✓ tests/audio.test.js (4 tests) 48ms
+ ✓ tests/url-tasks.test.js (18 tests) 6ms
+ ✓ tests/state.test.js (6 tests) 78ms
+ ✓ tests/tasks.test.js (8 tests) 4ms
+ ✓ tests/timer.test.js (8 tests) 14ms
+ ✓ tests/theme.test.js (4 tests) 5ms
+ ✓ tests/utils.test.js (33 tests) 4ms
+ ✓ tests/i18n.test.js (8 tests) 3ms
+
+ Test Files  16 passed (16)
+      Tests  229 passed (229)
+   Start at  10:35:30
+   Duration  36.70s (transform 863ms, setup 2.56s, collect 941ms, tests 751ms, environment 316.10s, prepare 21.08s)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   67.47 |    89.55 |   73.13 |   67.47 |                       
+ app.js        |   28.67 |       56 |      25 |   28.67 | ...14-815,831,843-845 
+ audio.js      |     100 |       75 |     100 |     100 | 16,29                 
+ date-utils.js |     100 |      100 |     100 |     100 |                       
+ export.js     |     100 |    77.77 |     100 |     100 | 48,65                 
+ i18n.js       |     100 |    85.71 |     100 |     100 | 147                   
+ milestone.js  |     100 |      100 |     100 |     100 |                       
+ state.js      |     100 |      100 |     100 |     100 |                       
+ stats.js      |     100 |      100 |     100 |     100 |                       
+ storage.js    |     100 |    97.72 |     100 |     100 | 40,45                 
+ tasks.js      |   92.45 |    76.47 |     100 |   92.45 | 42-43,56-57           
+ theme.js      |     100 |       80 |     100 |     100 | 7                     
+ timer.js      |   92.15 |    73.68 |   84.61 |   92.15 | 38-39,81-82,116-119   
+ todotxt.js    |   95.23 |    95.23 |     100 |   95.23 | 36-38                 
+ ui.js         |   55.88 |      100 |      80 |   55.88 | 20-35                 
+ url-tasks.js  |   96.92 |    94.87 |     100 |   96.92 | 40-41                 
+ utils.js      |     100 |    88.88 |     100 |     100 | 26,28                 
+---------------|---------|----------|---------|---------|-----------------------

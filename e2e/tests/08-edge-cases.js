@@ -13,7 +13,7 @@ export async function run() {
 
   // セットアップ
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // === シナリオA: 空タスクでのルーレット ===
@@ -34,7 +34,7 @@ export async function run() {
   const afterRoulette = browser.isVisible('#main-screen');
   test.assert(beforeRoulette && afterRoulette, '空タスクではルーレットが実行されない');
 
-  browser.screenshot('08-edge-cases-empty-roulette');
+  await browser.screenshot('08-edge-cases-empty-roulette');
 
   // === シナリオB: 長いタスク名 ===
   console.log('  [シナリオB: 長いタスク名]');
@@ -58,7 +58,7 @@ export async function run() {
   const displayedTask = browser.getText('#focus-task-display');
   test.assert(displayedTask.length > 0, '長いタスク名が表示される');
 
-  browser.screenshot('08-edge-cases-long-task');
+  await browser.screenshot('08-edge-cases-long-task');
 
   // 終了して戻る
   browser.evaluate("document.querySelector('#btn-finish-focus').click()");
@@ -68,7 +68,7 @@ export async function run() {
   console.log('  [シナリオC: 特殊文字（XSS対策）]');
 
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
 
   // XSSペイロードを入力
   const xssPayload = '<script>alert("xss")</script>';
@@ -92,13 +92,13 @@ export async function run() {
     'XSSペイロードが文字列として表示される'
   );
 
-  browser.screenshot('08-edge-cases-xss');
+  await browser.screenshot('08-edge-cases-xss');
 
   // === シナリオD: 単一タスクでの削除ボタン非表示 ===
   console.log('  [シナリオD: 単一タスクでの削除ボタン]');
 
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
 
   // 単一タスク状態で削除ボタンが非表示であることを確認
   const removeButtonCount = browser.countElements('.btn-remove');
@@ -111,7 +111,7 @@ export async function run() {
   const removeButtonCountAfter = browser.countElements('.btn-remove');
   test.assert(removeButtonCountAfter > 0, '複数タスクで削除ボタンが表示される');
 
-  browser.screenshot('08-edge-cases-remove-button');
+  await browser.screenshot('08-edge-cases-remove-button');
 
   // === シナリオE: タスク上限後の追加ボタン ===
   console.log('  [シナリオE: タスク上限]');
@@ -130,14 +130,14 @@ export async function run() {
   );
   test.assert(addButtonDisabled.includes('true'), '6個で追加ボタンが無効化');
 
-  browser.screenshot('08-edge-cases-max-tasks');
+  await browser.screenshot('08-edge-cases-max-tasks');
 
   return test.summary();
 }
 
 // 直接実行時
 if (process.argv[1].includes('08-edge-cases')) {
-  browser.open();
+  await browser.open();
   const passed = await run();
   process.exit(passed ? 0 : 1);
 }

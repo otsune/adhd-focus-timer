@@ -15,7 +15,7 @@ export async function run() {
   console.log('  [シナリオA: 集中中の状態復元]');
 
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // タスクを入力して開始
@@ -27,26 +27,38 @@ export async function run() {
   browser.evaluate("document.querySelector('.btn-start-direct').click()");
 
   // 少し待機
-  await browser.wait(1500);
+  await browser.waitForVisible('#focus-screen');
 
   // 集中中であることを確認
   const focusScreenVisible = browser.isVisible('#focus-screen');
   test.assert(focusScreenVisible, '集中画面が表示されている');
 
   // ページをリロード
-  browser.reload();
+  await browser.reload();
+  await browser.waitForCondition(
+    () => {
+      const bannerActive = browser.evaluate(
+        "document.getElementById('recovery-banner')?.classList.contains('active') || false"
+      );
+      return bannerActive.toLowerCase() === 'true' || browser.isVisible('#focus-screen');
+    },
+    5000,
+    250
+  );
 
   // 復元バナーが表示されることを確認
-  const recoveryBannerVisible = browser.isVisible('#recovery-banner');
+  const recoveryBannerVisible = browser.evaluate(
+    "document.getElementById('recovery-banner')?.classList.contains('active') || false"
+  ).toLowerCase() === 'true';
   const focusStillVisible = browser.isVisible('#focus-screen');
   test.assert(recoveryBannerVisible || focusStillVisible, 'リロード後に復元バナーまたは集中画面が表示される');
 
-  browser.screenshot('07-state-persistence-banner');
+  await browser.screenshot('07-state-persistence-banner');
 
   // 再開ボタンをクリック
   if (recoveryBannerVisible) {
     browser.evaluate("document.querySelector('.btn-recovery-resume').click()");
-    await browser.wait(300);
+    await browser.waitForVisible('#focus-screen');
   }
 
   // 集中画面に戻ることを確認
@@ -57,13 +69,13 @@ export async function run() {
   const timerText = browser.getText('#focus-timer-display');
   test.assert(timerText.includes(':'), 'タイマーが継続している');
 
-  browser.screenshot('07-state-persistence-resumed');
+  await browser.screenshot('07-state-persistence-resumed');
 
   // === シナリオB: 復帰モードの状態復元 ===
   console.log('  [シナリオB: 復帰モードの状態復元]');
 
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   browser.evaluate(`
@@ -72,7 +84,7 @@ export async function run() {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   `);
   browser.evaluate("document.querySelector('.btn-start-direct').click()");
-  await browser.wait(500);
+  await browser.waitForVisible('#focus-screen');
 
   // 離席して復帰モードに入る
   browser.evaluate("document.querySelector('#btn-away').click()");
@@ -82,24 +94,26 @@ export async function run() {
   test.assert(recoverySectionVisible, '復帰モードに入る');
 
   // ページをリロード
-  browser.reload();
+  await browser.reload();
+  await browser.waitForVisible('#recovery-section');
 
   // 復帰モードが復元されることを確認
   const recoverySectionAfterReload = browser.isVisible('#recovery-section');
   test.assert(recoverySectionAfterReload, 'リロード後も復帰モードが復元される');
 
-  browser.screenshot('07-state-persistence-recovery');
+  await browser.screenshot('07-state-persistence-recovery');
 
   // === シナリオC: 破棄を選択 ===
   console.log('  [シナリオC: 破棄を選択]');
 
   browser.resetStorage();
-  browser.reload();
+  await browser.reload();
   browser.overrideDialogs();
 
   // 集中中の状態を注入
   browser.injectFocusState('破棄テストタスク');
-  browser.reload();
+  await browser.reload();
+  await browser.waitForVisible('#recovery-banner');
 
   // 復元バナーが表示されることを確認
   const bannerVisible = browser.isVisible('#recovery-banner');
@@ -107,7 +121,7 @@ export async function run() {
 
   // 破棄ボタンをクリック
   browser.evaluate("document.querySelector('.btn-recovery-discard').click()");
-  await browser.wait(500);
+  await browser.waitForVisible('#main-screen');
 
   // メイン画面に戻ることを確認
   const mainScreenVisible = browser.isVisible('#main-screen');
@@ -118,14 +132,14 @@ export async function run() {
   const logs = browser.getStorage('logs_v2');
   test.assert(logs.includes('破棄テストタスク'), '破棄時もログに記録される');
 
-  browser.screenshot('07-state-persistence-discard');
+  await browser.screenshot('07-state-persistence-discard');
 
   return test.summary();
 }
 
 // 直接実行時
 if (process.argv[1].includes('07-state-persistence')) {
-  browser.open();
+  await browser.open();
   const passed = await run();
   process.exit(passed ? 0 : 1);
 }

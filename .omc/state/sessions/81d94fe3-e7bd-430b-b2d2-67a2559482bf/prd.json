@@ -1,0 +1,55 @@
+{
+  "title": "app.js モジュール分割リファクタリングの完成確認",
+  "description": "app.jsを7つの専用モジュールに分割するリファクタリングの完成と品質検証",
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "新規モジュールが正しく存在・エクスポートされている",
+      "acceptanceCriteria": [
+        "src/app-utils.js が存在し tr と uiDuration をエクスポートしている",
+        "src/focus-session.js が存在し setFocusSessionCallbacks, startFocus, pauseAs, finishFocus 等をエクスポートしている",
+        "src/recovery-ui.js が存在し renderRecoverySection, exitRecovery, setRecoveryCallbacks 等をエクスポートしている",
+        "src/roulette.js が存在し startRoulette, clearRouletteInterval, setRouletteCallbacks をエクスポートしている",
+        "src/settings-ui.js が存在し showSettings, handleSaveSettings, applyLanguage 等をエクスポートしている",
+        "src/summary-ui.js が存在し showSummary, closeSummary, setSummaryCallbacks をエクスポートしている",
+        "src/task-ui.js が存在し renderTaskSlots, addTask, undoRemoveTask, setTaskUICallbacks をエクスポートしている"
+      ],
+      "passes": true,
+      "verifiedEvidence": "grep による全モジュールのエクスポート確認済み。全7モジュールが必要な関数をエクスポートしている。"
+    },
+    {
+      "id": "US-002",
+      "title": "全ユニットテストがパスしている",
+      "acceptanceCriteria": [
+        "npm test で全22テストファイル・301テストがパスする",
+        "新規モジュールのテスト（focus-session, recovery-ui, roulette, settings-ui, summary-ui, task-ui）がすべてパスする",
+        "既存テスト（app smoke test含む）がリグレッションしていない"
+      ],
+      "passes": true,
+      "verifiedEvidence": "npm test: Test Files 22 passed (22), Tests 301 passed (301)"
+    },
+    {
+      "id": "US-003",
+      "title": "ビルドが警告なしで成功する",
+      "acceptanceCriteria": [
+        "npm run build が exit code 0 で完了する",
+        "build.js の MODULE_ORDER に7つの新規モジュールが適切な依存順序で含まれている",
+        "ビルド出力に 'Duplicate identifier' 警告が含まれない",
+        "dist/index.html が生成される"
+      ],
+      "passes": true,
+      "verifiedEvidence": "npm run build: Build complete: dist/index.html (exit code 0, no Duplicate warnings)"
+    },
+    {
+      "id": "US-004",
+      "title": "app.js が適切に薄くなっている",
+      "acceptanceCriteria": [
+        "src/app.js が200行以下になっている",
+        "app.js はオーケストレーションのみを担い、UI・ロジックの実装は各モジュールに移譲されている",
+        "app.js から initApp() がエクスポートされている"
+      ],
+      "passes": true,
+      "verifiedEvidence": "app.js 179行（<200）。7つのモジュールを import してコールバック配線のみ実施。export function initApp() 確認済み。"
+    }
+  ]
+}

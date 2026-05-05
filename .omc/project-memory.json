@@ -1,0 +1,281 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1777534810452,
+  "projectRoot": "/mnt/c/Users/user/Documents/adhd-focus-timer",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "vite",
+        "version": "7.1.0",
+        "category": "build"
+      },
+      {
+        "name": "vitest",
+        "version": "3.2.1",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build 2>&1 | grep -E \"Duplicate|Build complete|Error\"",
+    "testCommand": "npm test 2>&1 | tail -10",
+    "lintCommand": null,
+    "devCommand": "npm run dev",
+    "scripts": {
+      "build": "node build.js",
+      "dev": "vite",
+      "test": "vitest run",
+      "test:coverage": "vitest run --coverage",
+      "test:watch": "vitest",
+      "test:e2e": "node e2e/run-all.js"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": "ES modules",
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "src",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "coverage": {
+      "path": "coverage",
+      "purpose": null,
+      "fileCount": 25,
+      "lastAccessed": 1777534810414,
+      "keyFiles": [
+        "app.js.html",
+        "audio.js.html",
+        "base.css",
+        "block-navigation.js",
+        "coverage-summary.json"
+      ]
+    },
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 1,
+      "lastAccessed": 1777534810419,
+      "keyFiles": [
+        "index.html"
+      ]
+    },
+    "e2e": {
+      "path": "e2e",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1777534810424,
+      "keyFiles": [
+        "run-all.js"
+      ]
+    },
+    "public_html": {
+      "path": "public_html",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1777534810428,
+      "keyFiles": [
+        "index.html"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 17,
+      "lastAccessed": 1777534810430,
+      "keyFiles": [
+        "app.js",
+        "audio.js",
+        "constants.js",
+        "date-utils.js",
+        "export.js"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 17,
+      "lastAccessed": 1777534810434,
+      "keyFiles": [
+        "app.test.js",
+        "audio.test.js",
+        "date-utils.test.js",
+        "export.test.js",
+        "i18n.test.js"
+      ]
+    },
+    "e2e/helpers": {
+      "path": "e2e/helpers",
+      "purpose": "Helper functions",
+      "fileCount": 1,
+      "lastAccessed": 1777534810444,
+      "keyFiles": [
+        "browser.js"
+      ]
+    },
+    "e2e/tests": {
+      "path": "e2e/tests",
+      "purpose": "Test files",
+      "fileCount": 8,
+      "lastAccessed": 1777534810448,
+      "keyFiles": [
+        "01-initial-load.js",
+        "02-task-management.js",
+        "03-timer-focus.js"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/app.js",
+      "accessCount": 89,
+      "lastAccessed": 1777581487365,
+      "type": "file"
+    },
+    {
+      "path": "src/task-ui.js",
+      "accessCount": 12,
+      "lastAccessed": 1777581574543,
+      "type": "file"
+    },
+    {
+      "path": "src/summary-ui.js",
+      "accessCount": 10,
+      "lastAccessed": 1777581503933,
+      "type": "file"
+    },
+    {
+      "path": "src/roulette.js",
+      "accessCount": 10,
+      "lastAccessed": 1777581570091,
+      "type": "file"
+    },
+    {
+      "path": "src/focus-session.js",
+      "accessCount": 8,
+      "lastAccessed": 1777581311093,
+      "type": "file"
+    },
+    {
+      "path": "src/settings-ui.js",
+      "accessCount": 7,
+      "lastAccessed": 1777581510567,
+      "type": "file"
+    },
+    {
+      "path": "tests/focus-session.test.js",
+      "accessCount": 6,
+      "lastAccessed": 1777581331840,
+      "type": "file"
+    },
+    {
+      "path": "src/recovery-ui.js",
+      "accessCount": 6,
+      "lastAccessed": 1777581511107,
+      "type": "file"
+    },
+    {
+      "path": "tests/summary-ui.test.js",
+      "accessCount": 4,
+      "lastAccessed": 1777561427641,
+      "type": "file"
+    },
+    {
+      "path": "src/app-utils.js",
+      "accessCount": 4,
+      "lastAccessed": 1777581310709,
+      "type": "file"
+    },
+    {
+      "path": "src/constants.js",
+      "accessCount": 4,
+      "lastAccessed": 1777581318827,
+      "type": "file"
+    },
+    {
+      "path": "tests/task-ui.test.js",
+      "accessCount": 3,
+      "lastAccessed": 1777542779777,
+      "type": "file"
+    },
+    {
+      "path": "tests/recovery-ui.test.js",
+      "accessCount": 2,
+      "lastAccessed": 1777581332590,
+      "type": "file"
+    },
+    {
+      "path": "tests/tasks.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1777542559162,
+      "type": "file"
+    },
+    {
+      "path": "tests/ui.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1777542559384,
+      "type": "file"
+    },
+    {
+      "path": "tests/setup.js",
+      "accessCount": 1,
+      "lastAccessed": 1777542598416,
+      "type": "file"
+    },
+    {
+      "path": "tests/roulette.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1777542621173,
+      "type": "file"
+    },
+    {
+      "path": "tests/settings-ui.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1777542683850,
+      "type": "file"
+    },
+    {
+      "path": "tests/app.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1777558576818,
+      "type": "file"
+    },
+    {
+      "path": "src/date-utils.js",
+      "accessCount": 1,
+      "lastAccessed": 1777561349023,
+      "type": "file"
+    },
+    {
+      "path": "src/state.js",
+      "accessCount": 1,
+      "lastAccessed": 1777581332803,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

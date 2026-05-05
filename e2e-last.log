@@ -1,0 +1,35 @@
+
+> adhd-focus-timer@2.0.0 test:e2e
+> node e2e/run-all.js
+
+笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊・  ADHD Focus Timer - E2E Test Suite
+笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊・  髢句ｧ区凾蛻ｻ: 2026/5/5 9:52:54
+
+  繝悶Λ繧ｦ繧ｶ繧定ｵｷ蜍穂ｸｭ...
+Fatal error: <ref *1> Error: spawnSync C:\Users\user\.browser-use-env\Scripts\browser-use.exe EPERM
+    at Object.spawnSync (node:internal/child_process:1119:20)
+    at spawnSync (node:child_process:911:24)
+    at execFileSync (node:child_process:954:15)
+    at run (file:///C:/Users/user/Documents/adhd-focus-timer/e2e/helpers/browser.js:37:20)
+    at openUrl (file:///C:/Users/user/Documents/adhd-focus-timer/e2e/helpers/browser.js:118:18)
+    at Module.open (file:///C:/Users/user/Documents/adhd-focus-timer/e2e/helpers/browser.js:111:10)
+    at runAllTests (file:///C:/Users/user/Documents/adhd-focus-timer/e2e/run-all.js:35:17)
+    at file:///C:/Users/user/Documents/adhd-focus-timer/e2e/run-all.js:99:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'spawnSync C:\\Users\\user\\.browser-use-env\\Scripts\\browser-use.exe',
+  path: 'C:\\Users\\user\\.browser-use-env\\Scripts\\browser-use.exe',
+  spawnargs: [
+    'open',
+    'file:///C:/Users/user/Documents/adhd-focus-timer/dist/index.html'
+  ],
+  error: [Circular *1],
+  status: null,
+  signal: null,
+  output: null,
+  pid: 0,
+  stdout: undefined,
+  stderr: undefined
+}

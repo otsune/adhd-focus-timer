@@ -4,7 +4,7 @@
  * browser-use コマンドをNode.jsから実行するためのラッパー
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,14 @@ const PROJECT_ROOT = resolve(__dirname, '../..');
 const DIST_HTML = resolve(PROJECT_ROOT, 'dist/index.html');
 const SCREENSHOTS_DIR = resolve(__dirname, '../screenshots');
 const DIST_FILE_URL = `file:///${DIST_HTML.replace(/\\/g, '/')}`;
+const BROWSER_USE_EXE = process.env.BROWSER_USE_EXE || 'C:\\Users\\user\\.browser-use-env\\Scripts\\browser-use.exe';
+const PWSH_EXE = process.env.PWSH_EXE || 'C:\\Program Files\\PowerShell\\7\\pwsh.exe';
+const DOM_READY_SCRIPT = `
+  (() => {
+    const body = document.body;
+    return Boolean(body && body.children.length > 0);
+  })()
+`;
 
 function normalizeResult(output) {
   return String(output)
@@ -25,9 +33,10 @@ function normalizeResult(output) {
  * browser-use コマンドを実行
  */
 export function run(cmd, options = {}) {
-  const fullCmd = `browser-use ${cmd}`;
+  const args = splitCliArgs(cmd);
+  const psCommand = `& '${BROWSER_USE_EXE}' ${args.map(quotePowerShellArg).join(' ')}`;
   try {
-    const result = execSync(fullCmd, {
+    const result = execFileSync(PWSH_EXE, ['-Command', psCommand], {
       encoding: 'utf-8',
       timeout: options.timeout || 30000,
       env: {
@@ -46,26 +55,82 @@ export function run(cmd, options = {}) {
   }
 }
 
+function splitCliArgs(cmd) {
+  const matches = cmd.match(/"[^"]*"|\S+/g) || [];
+  return matches.map((part) => {
+    if (part.startsWith('"') && part.endsWith('"')) {
+      return part.slice(1, -1);
+    }
+    return part;
+  });
+}
+
+function quotePowerShellArg(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function isEmptyDomError(error) {
+  const message = String(error?.message || error || '');
+  return message.includes('Empty DOM') || message.includes('Empty DOM tree');
+}
+
+function isOpenAbortOrMissingDomError(error) {
+  const message = String(error?.message || error || '');
+  return message.includes('net::ERR_ABORTED') || isEmptyDomError(error);
+}
+
+function readDomReadyFlag() {
+  const result = normalizeResult(run(`eval "${DOM_READY_SCRIPT.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`));
+  return result.toLowerCase() === 'true';
+}
+
+function waitForDomReadySync(maxAttempts = 20, delayMs = 500) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      if (readDomReadyFlag()) {
+        return true;
+      }
+    } catch (error) {
+      lastError = error;
+      if (!isOpenAbortOrMissingDomError(error) && attempt === maxAttempts) {
+        throw error;
+      }
+    }
+    sleep(delayMs);
+  }
+
+  if (lastError && !isOpenAbortOrMissingDomError(lastError)) {
+    throw lastError;
+  }
+  throw new Error('DOM was not ready in time');
+}
+
 /**
  * dist/index.html を file:// で開く
  */
-export function open() {
+export async function open() {
   return openUrl(DIST_FILE_URL);
 }
 
 /**
  * 指定URLを開く
  */
-export function openUrl(url) {
+export async function openUrl(url) {
   const result = run(`open "${url}"`);
-  wait(1500);
+  await waitForDomReady();
   return result;
 }
 
 /**
  * ページの状態（クリック可能要素一覧）を取得
  */
-export function state() {
+export async function state() {
+  await waitForDomReady();
   return retry(() => {
     const result = run('state');
     if (result.includes('Empty DOM tree')) {
@@ -99,7 +164,8 @@ export function keys(keySequence) {
 /**
  * スクリーンショット保存
  */
-export function screenshot(name) {
+export async function screenshot(name) {
+  await waitForDomReady(20, 500);
   mkdirSync(SCREENSHOTS_DIR, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const filename = `${SCREENSHOTS_DIR}/${name}_${timestamp}.png`;
@@ -111,7 +177,14 @@ export function screenshot(name) {
  */
 export function evaluate(jsCode) {
   const escaped = jsCode.replace(/"/g, '\\"').replace(/\n/g, ' ');
-  return normalizeResult(run(`eval "${escaped}"`));
+  return retrySync(() => {
+    waitForDomReadySync(12, 400);
+    const result = normalizeResult(run(`eval "${escaped}"`));
+    if (result.includes('Empty DOM tree')) {
+      throw new Error('Empty DOM');
+    }
+    return result;
+  }, 4, 250);
 }
 
 /**
@@ -211,6 +284,60 @@ export async function retry(fn, maxAttempts = 3, baseDelay = 500) {
       await wait(baseDelay * Math.pow(2, attempt - 1));
     }
   }
+}
+
+export function retrySync(fn, maxAttempts = 3, baseDelay = 250) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return fn();
+    } catch (e) {
+      if (attempt === maxAttempts) throw e;
+      sleep(baseDelay * Math.pow(2, attempt - 1));
+    }
+  }
+}
+
+export async function waitForDomReady(maxAttempts = 20, delayMs = 500) {
+  return retry(async () => {
+    waitForDomReadySync(maxAttempts, delayMs);
+    return true;
+  }, 2, delayMs);
+}
+
+export async function waitForVisible(selector, timeoutMs = 5000, pollMs = 200) {
+  const maxAttempts = Math.max(1, Math.ceil(timeoutMs / pollMs));
+  return retry(async () => {
+    await waitForDomReady();
+    const visible = isVisible(selector);
+    if (!visible) {
+      throw new Error(`Element not visible yet: ${selector}`);
+    }
+    return true;
+  }, maxAttempts, pollMs);
+}
+
+export async function waitForHidden(selector, timeoutMs = 5000, pollMs = 200) {
+  const maxAttempts = Math.max(1, Math.ceil(timeoutMs / pollMs));
+  return retry(async () => {
+    await waitForDomReady();
+    const visible = isVisible(selector);
+    if (visible) {
+      throw new Error(`Element still visible: ${selector}`);
+    }
+    return true;
+  }, maxAttempts, pollMs);
+}
+
+export async function waitForCondition(checkFn, timeoutMs = 5000, pollMs = 200) {
+  const maxAttempts = Math.max(1, Math.ceil(timeoutMs / pollMs));
+  return retry(async () => {
+    await waitForDomReady();
+    const result = checkFn();
+    if (!result) {
+      throw new Error('Condition not met yet');
+    }
+    return true;
+  }, maxAttempts, pollMs);
 }
 
 /**

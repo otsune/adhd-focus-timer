@@ -1,0 +1,17 @@
+=== function applyTheme ===
+1952:function applyTheme(mode) {
+=== function setText ===
+1632:function setText(id, text) {
+=== function setAttr ===
+1637:function setAttr(id, name, value) {
+=== function trapFocus ===
+1649:function trapFocus(modalElement) {
+=== function initAudio ===
+1908:function initAudio() {
+=== function playBeep ===
+1922:function playBeep(type) {
+=== const TRANSLATIONS ===
+1482:const TRANSLATIONS = {
+=== const MAX_TASKS ===
+1392:const MAX_TASKS = 6;
+2065:const MAX_TASKS_FIELD_LENGTH = 2048;

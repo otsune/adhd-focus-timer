@@ -1,0 +1,33 @@
+
+> adhd-focus-timer@2.0.0 test:e2e
+> node e2e/run-all.js
+
+═══════════════════════════════════════════════════════════
+  ADHD Focus Timer - E2E Test Suite
+═══════════════════════════════════════════════════════════
+  開始時刻: 2026/4/30 10:12:42
+
+/bin/sh: 1: browser-use: Permission denied
+  ブラウザを起動中...
+/bin/sh: 1: browser-use: Permission denied
+Fatal error: Error: Command failed: browser-use open "file:////mnt/c/Users/user/Documents/adhd-focus-timer/dist/index.html"
+/bin/sh: 1: browser-use: Permission denied
+
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:882:11)
+    at execSync (node:child_process:954:15)
+    at run (file:///mnt/c/Users/user/Documents/adhd-focus-timer/e2e/helpers/browser.js:30:20)
+    at openUrl (file:///mnt/c/Users/user/Documents/adhd-focus-timer/e2e/helpers/browser.js:60:18)
+    at Module.open (file:///mnt/c/Users/user/Documents/adhd-focus-timer/e2e/helpers/browser.js:53:10)
+    at runAllTests (file:///mnt/c/Users/user/Documents/adhd-focus-timer/e2e/run-all.js:35:11)
+    at file:///mnt/c/Users/user/Documents/adhd-focus-timer/e2e/run-all.js:98:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:274:25) {
+  status: 127,
+  signal: null,
+  output: [ null, '', '/bin/sh: 1: browser-use: Permission denied\n' ],
+  pid: 93572,
+  stdout: '',
+  stderr: '/bin/sh: 1: browser-use: Permission denied\n'
+}
+/bin/sh: 1: browser-use: Permission denied

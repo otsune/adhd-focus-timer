@@ -1,0 +1,26 @@
+=== T14 dist/index.html verification ===
+URL: file:///mnt/c/Users/user/Documents/adhd-focus-timer/dist/index.html
+Timestamp: 2026-04-30T01:11:40.987Z
+
+pageError count: 0
+console.error count: 0
+
+--- pageErrors ---
+(none)
+
+--- consoleErrors ---
+(none)
+
+--- Result ---
+{
+  "mainVisible": true,
+  "taskSlots": 1,
+  "addBtnVisible": true,
+  "focusVisible": true,
+  "elapsedText": "00:03",
+  "focusTaskName": "テストタスク",
+  "summaryVisible": true,
+  "mainBack": false,
+  "pageErrorCount": 0,
+  "consoleErrorCount": 0
+}
